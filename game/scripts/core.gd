@@ -1,10 +1,11 @@
 class_name Core
 extends Node2D
 ## The player star: layered glowing circle, accretion ring strata, and the
-## mouse-aimed mining beam. Fully drawn in _draw() — no sprites.
+## aimed mining beam. All glow is drawn (layered alpha falloff), so the look
+## survives renderers without HDR bloom; real bloom stacks on top on desktop.
 
-const CORE_RADIUS := 26.0
-const STRATA_GAP := 16.0
+const CORE_RADIUS := 34.0
+const STRATA_GAP := 18.0
 const IFRAMES := 0.6
 
 var hp: int
@@ -50,6 +51,8 @@ func _update_beam(delta: float) -> void:
 	var best_d := INF
 	for e in get_tree().get_nodes_in_group(&"enemies"):
 		var enemy := e as Node2D
+		if not is_instance_valid(enemy) or enemy.is_queued_for_deletion():
+			continue
 		var to_e := enemy.global_position - global_position
 		var along := to_e.dot(dir)
 		if along < 0.0 or along > reach:
@@ -78,29 +81,56 @@ func heal_full_segment() -> void:
 func _on_level_up(_level: int) -> void:
 	_glow_punch = 1.0
 
+func _soft_circle(pos: Vector2, r: float, c: Color, steps: int = 4) -> void:
+	# painted bloom: stacked translucent discs, brightest in the middle
+	for i in steps:
+		var f := 1.0 - float(i) / steps
+		var col := c
+		col.a = c.a * (0.28 + 0.72 * f * f)
+		draw_circle(pos, r * (1.0 - 0.62 * f), col)
+
 func _draw() -> void:
 	var breathe := 1.0 + sin(_pulse * 2.4) * 0.03
-	# accretion strata (older = dimmer, cooler)
+	var boost := 1.0 + _glow_punch * 1.2
+
+	# wide painted halo so the star reads as luminous on every renderer
+	_soft_circle(Vector2.ZERO, CORE_RADIUS * 3.2 * breathe, Color(0.25, 0.75, 0.95, 0.10 + _glow_punch * 0.12), 5)
+
+	# accretion strata (older = dimmer); faint fill between strata
 	for i in GameState.ring_level + 1:
 		var r := CORE_RADIUS + STRATA_GAP * (1.0 + i * 0.35)
 		var age := float(GameState.ring_level - i)
-		var c := Color(0.18, 0.55, 0.75, clampf(0.5 - age * 0.04, 0.08, 0.5))
-		draw_arc(Vector2.ZERO, r * breathe, 0.0, TAU, 64, c, 2.5, true)
+		var a := clampf(0.65 - age * 0.05, 0.12, 0.65)
+		draw_arc(Vector2.ZERO, r * breathe, 0.0, TAU, 72, Color(0.16, 0.5, 0.68, a * 0.35), 7.0, true)
+		draw_arc(Vector2.ZERO, r * breathe, 0.0, TAU, 72, Color(0.45, 0.95, 1.1, a), 3.0, true)
+
+	# orbiting motes on the outer stratum
+	var rr := ring_radius() * breathe
+	for m in 5:
+		var ang := _pulse * (0.5 + m * 0.13) + TAU * m / 5.0
+		_soft_circle(Vector2.from_angle(ang) * rr, 6.0, Color(0.7, 1.3, 1.4, 0.5), 3)
+
 	# magnet radius hint
 	draw_arc(Vector2.ZERO, GameState.mods.magnet_radius, 0.0, TAU, 96,
-			Color(0.2, 0.5, 0.6, 0.06), 1.5, true)
-	# beam
+			Color(0.3, 0.7, 0.8, 0.05), 2.0, true)
+
+	# beam: painted glow stack + hot white core
 	if beam_on:
 		var local_end := to_local(beam_end)
 		var w: float = GameState.mods.beam_width
-		var hot := 1.6 + _glow_punch
-		draw_line(Vector2.ZERO, local_end, Color(0.25 * hot, 0.9 * hot, 1.1 * hot, 0.35), w * 1.8)
-		draw_line(Vector2.ZERO, local_end, Color(0.5 * hot, 1.2 * hot, 1.4 * hot, 0.9), w)
-		draw_line(Vector2.ZERO, local_end, Color(2.0, 2.0, 2.0, 0.9), w * 0.3)
+		var flick := 1.0 + sin(_pulse * 43.0) * 0.12
+		draw_line(Vector2.ZERO, local_end, Color(0.2, 0.65, 0.9, 0.16), w * 4.6 * flick)
+		draw_line(Vector2.ZERO, local_end, Color(0.35, 0.95, 1.15, 0.45), w * 2.2)
+		draw_line(Vector2.ZERO, local_end, Color(0.75, 1.25, 1.35, 0.9), w * 1.0)
+		draw_line(Vector2.ZERO, local_end, Color(1.0, 1.0, 1.0, 0.95), w * 0.42)
+		_soft_circle(Vector2.ZERO, w * 1.6, Color(0.8, 1.2, 1.3, 0.8), 3)
 		if beam_target != null:
-			draw_circle(local_end, w * 0.9, Color(2.2, 2.2, 2.4, 0.8))
-	# core body: over-unity colors bloom under HDR-2D glow
-	var boost := 1.0 + _glow_punch * 1.2
-	draw_circle(Vector2.ZERO, CORE_RADIUS * breathe, Color(0.35 * boost, 1.1 * boost, 1.35 * boost, 0.55))
-	draw_circle(Vector2.ZERO, CORE_RADIUS * 0.72 * breathe, Color(0.9 * boost, 1.7 * boost, 1.9 * boost))
-	draw_circle(Vector2.ZERO, CORE_RADIUS * 0.4 * breathe, Color(2.5, 2.8, 2.8))
+			_soft_circle(local_end, w * 1.7 * flick, Color(1.0, 1.0, 1.0, 0.85), 4)
+			for s in 4:
+				var sd := Vector2.from_angle(randf() * TAU) * randf_range(8.0, 26.0)
+				draw_line(local_end, local_end + sd, Color(0.9, 1.2, 1.3, 0.7), 2.0)
+
+	# core body
+	draw_circle(Vector2.ZERO, CORE_RADIUS * breathe, Color(0.30 * boost, 0.85 * boost, 1.0 * boost, 0.75))
+	draw_circle(Vector2.ZERO, CORE_RADIUS * 0.74 * breathe, Color(0.55 * boost, 1.0 * boost, 1.0 * boost))
+	draw_circle(Vector2.ZERO, CORE_RADIUS * 0.44 * breathe, Color(1.0, 1.0, 1.0))

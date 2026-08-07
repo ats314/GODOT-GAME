@@ -43,8 +43,10 @@ func _draw() -> void:
 		var a := _tracer_life
 		draw_line(Vector2.ZERO, to_local(_tracer_to), Color(1.6, 1.3, 0.5, a * 0.8), 3.0)
 		draw_line(Vector2.ZERO, to_local(_tracer_to), Color(2.2, 2.2, 1.8, a), 1.2)
-	var pts := PackedVector2Array([Vector2(0, -9), Vector2(7, 0), Vector2(0, 9), Vector2(-7, 0)])
-	draw_colored_polygon(pts, Color(0.3, 0.35, 0.12, 0.9))
+	var pts := PackedVector2Array([Vector2(0, -12), Vector2(9, 0), Vector2(0, 12), Vector2(-9, 0)])
+	draw_circle(Vector2.ZERO, 20.0, Color(1.0, 0.85, 0.35, 0.12))
+	draw_colored_polygon(pts, Color(0.55, 0.5, 0.18, 0.95))
 	var outline := pts.duplicate()
 	outline.append(pts[0])
-	draw_polyline(outline, Color(1.5, 1.4, 0.5, 0.95), 2.0, true)
+	draw_polyline(outline, Color(1.0, 0.9, 0.45), 2.5, true)
+	draw_circle(Vector2.ZERO, 3.5, Color(1.0, 1.0, 0.85))

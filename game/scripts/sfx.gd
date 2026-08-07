@@ -12,6 +12,8 @@ var _arpeggio_step: int = 0
 var _arpeggio_reset_at: float = 0.0
 
 func _ready() -> void:
+	# keep audio alive while the tree is paused (upgrade cards, game over)
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	for i in POOL:
 		var p := AudioStreamPlayer.new()
 		p.bus = &"Master"

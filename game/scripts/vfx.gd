@@ -26,6 +26,7 @@ func _burst(pos: Vector2, amount: int, color: Color, speed: float, life: float) 
 	if scene == null:
 		return
 	var p := CPUParticles2D.new()
+	p.process_mode = Node.PROCESS_MODE_PAUSABLE
 	p.global_position = pos
 	p.emitting = false
 	p.one_shot = true
