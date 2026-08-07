@@ -48,4 +48,5 @@ demo's `project.godot` (e.g. `third_party/godot-demo-projects/2d/dodge_the_creep
 ## Status
 
 - [x] Foundation: vendored free Godot code + license records + deep-dive survey
-- [ ] Game: design pick, then build in `game/` (menus, gameplay, HUD, saves)
+- [x] Master game design: **ACCRETE** — see `docs/GAME_DESIGN.md`
+- [ ] Game: build in `game/` (vertical slice → systems → content → ship)
