@@ -60,6 +60,7 @@ func _ready() -> void:
 	Events.mass_changed.connect(func(_m: float, _d: float) -> void: _refresh())
 	Events.ring_level_up.connect(func(_l: int) -> void: _refresh())
 	Events.core_damaged.connect(func(_hp: int, _max: int) -> void: _refresh_hp())
+	Events.core_healed.connect(func(_hp: int, _max: int) -> void: _refresh_hp())
 	Events.wave_started.connect(_on_wave)
 	Events.upgrade_chosen.connect(func(_id: StringName) -> void:
 		_refresh()

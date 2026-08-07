@@ -32,6 +32,8 @@ func _nearest_enemy() -> Enemy:
 	var best: Enemy = null
 	var best_d := RANGE
 	for e in get_tree().get_nodes_in_group(&"enemies"):
+		if e.is_queued_for_deletion():
+			continue  # same-frame corpse; don't waste the shot
 		var d: float = (e as Node2D).global_position.distance_to(global_position)
 		if d < best_d:
 			best_d = d

@@ -13,6 +13,7 @@ var beam_on := false
 var beam_end := Vector2.ZERO
 var beam_target: Node2D = null
 var _aim_dir := Vector2.RIGHT  # persists so controller aim never snaps to zero
+var _mouse_aim := true         # last input source decides how aim updates
 var _invuln_until := 0.0
 var _pulse := 0.0
 var _glow_punch := 0.0
@@ -39,11 +40,16 @@ func _update_beam(delta: float) -> void:
 	var dir := _aim_dir
 	var stick := Input.get_vector(&"aim_left", &"aim_right", &"aim_up", &"aim_down")
 	if stick.length() > 0.25:
+		_mouse_aim = false
 		dir = stick.normalized()
-	elif Input.get_last_mouse_velocity().length() > 2.0:
-		var to_mouse := get_global_mouse_position() - global_position
-		if to_mouse.length() > 1.0:
-			dir = to_mouse.normalized()
+	else:
+		if Input.get_last_mouse_velocity().length() > 2.0:
+			_mouse_aim = true
+		if _mouse_aim:
+			# mouse users track the cursor continuously, even when it's still
+			var to_mouse := get_global_mouse_position() - global_position
+			if to_mouse.length() > 1.0:
+				dir = to_mouse.normalized()
 	_aim_dir = dir
 	var reach := 1400.0
 	beam_end = global_position + dir * reach
@@ -76,7 +82,7 @@ func take_hit() -> void:
 
 func heal_full_segment() -> void:
 	hp = mini(hp + 1, GameState.mods.max_hp)
-	Events.core_damaged.emit(hp, GameState.mods.max_hp)
+	Events.core_healed.emit(hp, GameState.mods.max_hp)
 
 func _on_level_up(_level: int) -> void:
 	_glow_punch = 1.0

@@ -29,6 +29,7 @@ var _shake := 0.0
 var _kill_times: Array[float] = []
 var _over := false
 var _pending_cards := 0
+var _hit_stop_id := 0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -76,16 +77,17 @@ func _build_world() -> void:
 	_gameplay(turrets_parent)
 	_sync_turrets()
 
-	spawner = Spawner.new()
-	spawner.core = core
-	spawner.shard_field = shard_field
-	spawner.enemies_parent = enemies_parent
-	_gameplay(spawner)
-
 	camera = Camera2D.new()
 	camera.position_smoothing_enabled = true
 	add_child(camera)
 	camera.make_current()
+
+	spawner = Spawner.new()
+	spawner.core = core
+	spawner.shard_field = shard_field
+	spawner.enemies_parent = enemies_parent
+	spawner.camera = camera
+	_gameplay(spawner)
 
 func _make_nebula() -> Node2D:
 	# two tinted seamless-noise clouds; generated once, no assets
@@ -179,9 +181,12 @@ func _on_enemy_killed(_pos: Vector2) -> void:
 		_hit_stop()
 
 func _hit_stop() -> void:
+	_hit_stop_id += 1
+	var my_id := _hit_stop_id
 	Engine.time_scale = 0.05
 	await get_tree().create_timer(0.07, true, false, true).timeout
-	Engine.time_scale = 1.0
+	if my_id == _hit_stop_id:  # a newer hit-stop owns the restore now
+		Engine.time_scale = 1.0
 
 func _on_core_damaged(hp: int, _max_hp: int) -> void:
 	_shake = 1.0
