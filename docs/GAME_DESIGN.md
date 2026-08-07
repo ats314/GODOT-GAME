@@ -137,6 +137,15 @@ Milestone 1, weeks 1-3 — Vertical slice: bullet_shower batching + dodge_the_cr
    week 3) — if it fails, fix the loop before adding content.
 4. **Sub-second restart / instant resume** (from LARIAT): idle players tab
    in and out constantly; zero-friction session re-entry is retention.
+5. **Controller-first accessibility (owner requirement — hard).** The
+   project owner plays controller-only. Full parity from day one: right
+   stick aims, right trigger / A fires, Start pauses, Y restarts, every
+   menu and upgrade card is d-pad navigable with visible focus. ACCRETE's
+   stationary-core, low-APM, plays-itself-at-60% design is inherently
+   suited to this — protect that property in every future mechanic (no
+   forced twitch input, no mouse-only interactions, no hold-and-mash).
+   Steam Deck verification is a launch target, and full input rebinding
+   ships via the Maaack shell in Milestone 2.
 
 ---
 

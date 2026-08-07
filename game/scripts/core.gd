@@ -11,6 +11,7 @@ var hp: int
 var beam_on := false
 var beam_end := Vector2.ZERO
 var beam_target: Node2D = null
+var _aim_dir := Vector2.RIGHT  # persists so controller aim never snaps to zero
 var _invuln_until := 0.0
 var _pulse := 0.0
 var _glow_punch := 0.0
@@ -34,9 +35,15 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _update_beam(delta: float) -> void:
-	var dir := (get_global_mouse_position() - global_position).normalized()
-	if dir == Vector2.ZERO:
-		dir = Vector2.RIGHT
+	var dir := _aim_dir
+	var stick := Input.get_vector(&"aim_left", &"aim_right", &"aim_up", &"aim_down")
+	if stick.length() > 0.25:
+		dir = stick.normalized()
+	elif Input.get_last_mouse_velocity().length() > 2.0:
+		var to_mouse := get_global_mouse_position() - global_position
+		if to_mouse.length() > 1.0:
+			dir = to_mouse.normalized()
+	_aim_dir = dir
 	var reach := 1400.0
 	beam_end = global_position + dir * reach
 	beam_target = null

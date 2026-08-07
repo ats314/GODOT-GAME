@@ -40,9 +40,15 @@ func show_options(options: Array, level: int) -> void:
 	_title.text = "RING LEVEL %d — CHOOSE" % level
 	for c in _cards.get_children():
 		c.queue_free()
+	var first: Button = null
 	for opt in options:
-		_cards.add_child(_make_card(opt))
+		var card := _make_card(opt)
+		_cards.add_child(card)
+		if first == null:
+			first = card
 	visible = true
+	if first != null:
+		first.grab_focus()  # d-pad/controller navigation starts here
 
 func _make_card(opt: Dictionary) -> Button:
 	var b := Button.new()
