@@ -1,5 +1,7 @@
-Maaack's Game Template Logo
-Copyright (c) Marek Belski
+Placeholder logo (flat colored square), original work created for this
+repository, dedicated to the public domain under CC0 1.0.
 
-This work is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International
-license (CC BY-NC-ND 4.0 International): https://creativecommons.org/licenses/by-nc-nd/4.0
+The upstream Maaack's Game Template plugin logo that originally lived in this
+directory is licensed CC BY-NC-ND 4.0 (noncommercial, no derivatives) and was
+REMOVED from this vendored copy per our licensing policy (commercial-safe
+content only). See THIRD_PARTY_LICENSES.md at the repository root.

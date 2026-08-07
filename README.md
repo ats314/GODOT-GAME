@@ -18,6 +18,8 @@ third_party/               Vendored snapshots of freely licensed Godot projects
   beehave/                 Behavior-tree AI addon (enemy AI)
   phantom-camera/          Camera addon (follow, transitions, juice)
   godot-open-rpg/          GDQuest open RPG (combat, inventory, dialogs)
+  Terrain3D/               High-performance 3D terrain addon (GDExtension)
+  ShaderV/                 Visual-shader node collection addon
 docs/
   GODOT_CODE_SURVEY.md     Deep-dive survey: what every vendored project
                            teaches and what we reuse from it

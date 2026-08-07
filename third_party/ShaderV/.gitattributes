@@ -1,0 +1,12 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+
+# Exclude some files from zip downloads
+
+/.gitattributes                               export-ignore
+/.gitignore                                   export-ignore
+/README.md                                    export-ignore
+/preview.gif                                  export-ignore
+/LICENSE                                      export-ignore
+/project.godot                                export-ignore
