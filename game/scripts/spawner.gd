@@ -18,13 +18,13 @@ func _process(delta: float) -> void:
 	if _wave_timer <= 0.0:
 		GameState.wave += 1
 		Events.wave_started.emit(GameState.wave)
-		_wave_timer = maxf(9.0, 16.0 - GameState.wave * 0.4)
+		_wave_timer = maxf(10.0, 16.0 - GameState.wave * 0.35)
 		if GameState.wave % 5 == 0:
 			_surge(4 + GameState.wave)
 		else:
-			_batch(2 + GameState.wave / 2)
+			_batch(2 + GameState.wave / 3)
 	if _trickle_timer <= 0.0:
-		_trickle_timer = maxf(0.55, 2.4 - GameState.wave * 0.1)
+		_trickle_timer = maxf(0.8, 2.4 - GameState.wave * 0.08)
 		_spawn_at(randf() * TAU)
 
 func _spawn_distance() -> float:

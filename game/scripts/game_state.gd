@@ -20,11 +20,14 @@ var mods: Dictionary = {}
 const DEFAULT_MODS := {
 	beam_power = 26.0,      # beam damage per second
 	beam_width = 10.0,
+	beam_pierce = 0.35,     # damage fraction carried to enemies behind the first
 	magnet_radius = 220.0,
 	turret_power = 14.0,    # damage per shot
 	turret_rate = 0.9,      # seconds between shots
 	turret_count = 1,
 	shard_bounty = 0,       # extra shards per kill
+	nova_power = 8.0,       # area damage dealt by every kill (chain reactions)
+	nova_radius = 85.0,
 	max_hp = 5,
 }
 
@@ -62,6 +65,10 @@ func apply_upgrade(id: StringName) -> void:
 		&"turret_rate": mods.turret_rate = maxf(0.12, mods.turret_rate * 0.78)
 		&"plating": mods.max_hp += 1
 		&"bounty": mods.shard_bounty += 1
+		&"lance": mods.beam_pierce = minf(1.0, mods.beam_pierce + 0.22)
+		&"nova":
+			mods.nova_power *= 1.45
+			mods.nova_radius *= 1.15
 	Events.upgrade_chosen.emit(id)
 
 func finish_run() -> void:

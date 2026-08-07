@@ -12,6 +12,8 @@ const UPGRADE_POOL := [
 	{id = &"turret_rate", title = "Rapid Discharge", desc = "Turrets fire 22% faster"},
 	{id = &"plating", title = "Core Plating", desc = "+1 max integrity, restore 1"},
 	{id = &"bounty", title = "Rich Veins", desc = "+1 shard from every kill"},
+	{id = &"lance", title = "Stellar Lance", desc = "Beam carries +22% damage through targets"},
+	{id = &"nova", title = "Nova Core", desc = "Kill explosions +45% damage, +15% radius"},
 ]
 
 var core: Core
@@ -196,6 +198,7 @@ func _on_core_damaged(hp: int, _max_hp: int) -> void:
 func _on_level_up(_level: int) -> void:
 	Sfx.play(&"levelup")
 	_sync_turrets()
+	core.heal_full_segment()  # growth is sustain: each ring level restores 1
 	_pending_cards += 1
 	if not upgrade_overlay.visible:
 		_show_next_cards()

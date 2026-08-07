@@ -54,7 +54,8 @@ func _update_beam(delta: float) -> void:
 	var reach := 1400.0
 	beam_end = global_position + dir * reach
 	beam_target = null
-	var best_d := INF
+	# collect every enemy along the line, nearest first, and pierce through
+	var hits: Array = []
 	for e in get_tree().get_nodes_in_group(&"enemies"):
 		var enemy := e as Node2D
 		if not is_instance_valid(enemy) or enemy.is_queued_for_deletion():
@@ -64,12 +65,18 @@ func _update_beam(delta: float) -> void:
 		if along < 0.0 or along > reach:
 			continue
 		var off := absf(to_e.cross(dir))
-		if off <= GameState.mods.beam_width * 0.5 + enemy.get(&"radius") and along < best_d:
-			best_d = along
-			beam_target = enemy
-	if beam_target != null:
-		beam_end = global_position + dir * best_d
-		beam_target.call(&"take_damage", GameState.mods.beam_power * delta)
+		if off <= GameState.mods.beam_width * 0.5 + enemy.get(&"radius"):
+			hits.append([along, enemy])
+	hits.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	var dmg: float = GameState.mods.beam_power * delta
+	for h in hits:
+		if beam_target == null:
+			beam_target = h[1]
+			beam_end = global_position + dir * (h[0] as float)
+		h[1].call(&"take_damage", dmg)
+		dmg *= GameState.mods.beam_pierce
+		if dmg < 0.5 * delta:
+			break
 
 func take_hit() -> void:
 	var now := Time.get_ticks_msec() / 1000.0

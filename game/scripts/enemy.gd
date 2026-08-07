@@ -21,10 +21,10 @@ static func make(p_core: Core, p_shards: ShardField, wave: int) -> Enemy:
 	var e := Enemy.new()
 	e.core = p_core
 	e.shard_field = p_shards
-	var toughness := 1.0 + wave * 0.22
+	var toughness := 1.0 + wave * 0.13
 	e.hp = 20.0 * toughness
 	e.max_hp = e.hp
-	e.speed = randf_range(70.0, 110.0) + wave * 2.0
+	e.speed = randf_range(70.0, 110.0) + wave * 1.2
 	if wave >= 4 and randf() < 0.25:
 		e.sides = 4  # tank: slower, bigger, tougher
 		e.radius = 30.0
@@ -72,6 +72,14 @@ func _die(drop_shards: bool) -> void:
 	if drop_shards and shard_field != null:
 		var burst: int = (4 if sides == 3 else 9) + GameState.mods.shard_bounty
 		shard_field.spawn_burst(global_position, burst)
+		# kill nova: every real kill damages nearby enemies, so dense crowds
+		# chain-react instead of overwhelming two single-target weapons
+		var nova: float = GameState.mods.nova_power * (1.6 if sides == 4 else 1.0)
+		for e in get_tree().get_nodes_in_group(&"enemies"):
+			if e == self or e.is_queued_for_deletion():
+				continue
+			if (e as Node2D).global_position.distance_to(global_position) <= GameState.mods.nova_radius:
+				e.call(&"take_damage", nova)
 	Sfx.play(&"pop", randf_range(0.85, 1.25), -4.0)
 	Events.enemy_killed.emit(global_position)
 	queue_free()
