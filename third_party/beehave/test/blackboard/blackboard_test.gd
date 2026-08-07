@@ -1,0 +1,117 @@
+# GdUnit generated TestSuite
+class_name BlackboardTest
+extends GdUnitTestSuite
+@warning_ignore("unused_parameter")
+@warning_ignore("return_value_discarded")
+
+# TestSuite generated from
+const __source = "res://addons/beehave/blackboard.gd"
+
+
+func test_has_value() -> void:
+	var blackboard = auto_free(load(__source).new())
+	blackboard.set_value("my-key", 123)
+	assert_bool(blackboard.has_value("my-key")).is_true()
+	assert_bool(blackboard.has_value("my-key2")).is_false()
+
+
+func test_erase_value() -> void:
+	var blackboard = auto_free(load(__source).new())
+	blackboard.set_value("my-key", 123)
+	blackboard.erase_value("my-key")
+	assert_bool(blackboard.has_value("my-key")).is_false()
+
+
+func test_separate_blackboard_erase_value() -> void:
+	var blackboard = auto_free(load(__source).new())
+	blackboard.set_value("my-key", 123, "other-blackboard")
+	blackboard.erase_value("my-key", "other-blackboard")
+	assert_bool(blackboard.has_value("my-key", "other-blackboard")).is_false()
+
+
+func test_set_value() -> void:
+	var blackboard = auto_free(load(__source).new())
+	blackboard.set_value("my-key", 123)
+	assert_that(blackboard.get_value("my-key")).is_equal(123)
+
+
+func test_separate_blackboard_id_value() -> void:
+	var blackboard = auto_free(load(__source).new())
+	blackboard.set_value("my-key", 123)
+	blackboard.set_value("my-key", 234, "other-blackboard")
+	assert_that(blackboard.get_value("my-key")).is_equal(123)
+	assert_that(blackboard.get_value("my-key", null, "other-blackboard")).is_equal(234)
+
+
+func test_get_default() -> void:
+	var blackboard = auto_free(load(__source).new())
+	blackboard.set_value("my-key", 123)
+	assert_that(blackboard.get_value("my-key2", 234)).is_equal(234)
+
+
+func test_blackboard_shared_between_trees() -> void:
+	var scene = auto_free(load("res://test/unit_test_scene.tscn").instantiate())
+	var runner = scene_runner(scene)
+
+	await runner.simulate_frames(100)
+
+	assert_that(scene.blackboard.get_value("custom_value")).is_equal(4)
+	assert_that(scene.blackboard.get_value("custom_value")).is_equal(4)
+	assert_that(scene.blackboard.keys().size()).is_equal(3)
+
+
+func test_blackboard_property_shared_between_trees() -> void:
+	var scene = auto_free(load("res://test/blackboard/shared_blackboard_scene.tscn").instantiate())
+	var runner = scene_runner(scene)
+
+	await runner.simulate_frames(10)
+
+	var blackboard1: Blackboard = scene.beehave_tree_1.get_child(0).blackboard
+	var blackboard2: Blackboard = scene.beehave_tree_2.get_child(0).blackboard
+
+	assert_that(blackboard1.get_value("hello")).is_equal("world")
+	assert_that(blackboard2.get_value("hello")).is_equal("world")
+
+
+func test_separate_blackboards_independent_values() -> void:
+	# Load the scene with two separate blackboards
+	var scene = auto_free(load("res://test/blackboard/shared_blackboard_scene.tscn").instantiate())
+	var runner = scene_runner(scene)
+	
+	await runner.simulate_frames(10)
+	
+	# Get references to the two blackboards
+	var shared = {}
+	var blackboard1: Blackboard = scene.blackboard
+	var blackboard2: Blackboard = scene.blackboard_2
+	
+	blackboard1.blackboard = shared
+	blackboard2.blackboard = shared
+	
+	# Set values in first blackboard
+	blackboard1.set_value("key1", "value1")
+	blackboard1.set_value("shared_key", "blackboard1_value")
+	
+	# Set values in second blackboard
+	blackboard2.set_value("key2", "value2")
+	blackboard2.set_value("shared_key", "blackboard2_value")
+	
+	# Verify that values in blackboard1 are as expected
+	assert_that(blackboard1.get_value("key1")).is_equal("value1")
+	assert_that(blackboard1.get_value("shared_key")).is_equal("blackboard1_value")
+	assert_bool(blackboard1.has_value("key2")).is_false()
+	
+	# Verify that values in blackboard2 are as expected
+	assert_that(blackboard2.get_value("key2")).is_equal("value2")
+	assert_that(blackboard2.get_value("shared_key")).is_equal("blackboard2_value")
+	assert_bool(blackboard2.has_value("key1")).is_false()
+	
+	# Modify a value in blackboard1 and verify it doesn't affect blackboard2
+	blackboard1.set_value("shared_key", "blackboard1_modified")
+	assert_that(blackboard1.get_value("shared_key")).is_equal("blackboard1_modified")
+	assert_that(blackboard2.get_value("shared_key")).is_equal("blackboard2_value")
+	
+	# Erase a value from blackboard2 and verify it doesn't affect blackboard1
+	blackboard2.erase_value("shared_key")
+	assert_bool(blackboard2.has_value("shared_key")).is_false()
+	assert_bool(blackboard1.has_value("shared_key")).is_true()

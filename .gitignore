@@ -1,0 +1,13 @@
+# Godot 4 per-project editor cache and imported assets
+.godot/
+# Godot 3-era import cache (in case any vendored project carries one)
+.import/
+# Exported builds
+build/
+export/
+*.pck
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.tmp
+*~

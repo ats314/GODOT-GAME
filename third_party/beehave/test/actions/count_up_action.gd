@@ -1,0 +1,21 @@
+@tool
+class_name CountUpAction extends ActionLeaf
+
+@export var key = "custom_value"
+@export var reset_on_interrupt = true
+
+var count = 0
+var status = SUCCESS
+
+
+func tick(_actor: Node, blackboard: Blackboard) -> int:
+	count += 1
+	blackboard.set_value(key, count)
+	return status
+
+
+func interrupt(_actor: Node, blackboard: Blackboard) -> void:
+	if reset_on_interrupt:
+		count = 0
+		blackboard.set_value(key, count)
+		status = FAILURE
