@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - "game/**"
+      - "speedrun_this/**"
       - ".github/workflows/godot-ci.yml"
   pull_request:
     paths:
       - "game/**"
+      - "speedrun_this/**"
       - ".github/workflows/godot-ci.yml"
 
 jobs:
@@ -33,13 +35,21 @@ jobs:
           mv Godot_v4.7.1-stable_linux.x86_64 godot
           chmod +x godot
 
-      - name: Import project
+      - name: Import ACCRETE
         run: ~/godot/godot --headless --path game --import 2>&1 | tee import.log
 
-      - name: Boot both scenes headless
+      - name: Boot ACCRETE scenes headless
         run: |
           ~/godot/godot --headless --path game res://scenes/main_menu.tscn --quit-after 300 2>&1 | tee boot.log
           ~/godot/godot --headless --path game res://scenes/run.tscn --quit-after 300 2>&1 | tee -a boot.log
+
+      - name: Import SPEEDRUN THIS
+        run: ~/godot/godot --headless --path speedrun_this --import 2>&1 | tee -a import.log
+
+      - name: Boot SPEEDRUN THIS scenes headless
+        run: |
+          ~/godot/godot --headless --path speedrun_this res://scenes/main_menu.tscn --quit-after 300 2>&1 | tee -a boot.log
+          ~/godot/godot --headless --path speedrun_this res://scenes/run.tscn --quit-after 300 2>&1 | tee -a boot.log
 
       - name: Fail on script errors
         run: |
