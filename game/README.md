@@ -1,4 +1,8 @@
-# ACCRETE — Milestone 1 vertical slice
+# ACCRETE — Milestone 1 vertical slice (DEAD PROTOTYPE)
+
+> ACCRETE was rejected by the project owner on 2026-08-09. This slice still
+> runs and CI still validates it, but it is not the project's direction. Kept
+> as a working reference for the vendored-code patterns it demonstrates.
 
 Everything you destroy becomes part of your star. Design: `../docs/GAME_DESIGN.md`.
 

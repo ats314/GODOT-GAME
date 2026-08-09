@@ -1,4 +1,16 @@
-# Master Game Design — ACCRETE
+# ACCRETE — REJECTED (dead, 2026-08-09)
+
+> **This design is dead.** The project owner rejected ACCRETE outright. Do not
+> build on it, do not resume its milestones, and do not treat it as the
+> project's direction. It is kept only as a record of the research and the
+> panel method that produced it — the market research in here is still real
+> and reusable; the game is not.
+>
+> `game/` and `play/` contain the Milestone 1 vertical slice and its published
+> web build, both now orphaned prototypes. See `docs/CONSTRAINTS.md` for what
+> actually binds the next design.
+
+# Master Game Design — ACCRETE (superseded)
 
 **The recommendation: build ACCRETE** — an action-incremental arena-defense
 game where everything you destroy becomes permanently part of your star.

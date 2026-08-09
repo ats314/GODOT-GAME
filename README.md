@@ -50,5 +50,11 @@ demo's `project.godot` (e.g. `third_party/godot-demo-projects/2d/dodge_the_creep
 ## Status
 
 - [x] Foundation: vendored free Godot code + license records + deep-dive survey
-- [x] Master game design: **ACCRETE** — see `docs/GAME_DESIGN.md`
-- [ ] Game: build in `game/` (vertical slice → systems → content → ship)
+- [x] Constraints established — see `docs/CONSTRAINTS.md` (only controller-only
+      accessibility is a hard rule; art and everything else are open)
+- [~] ~~Master game design: ACCRETE~~ — **rejected by the owner, 2026-08-09.**
+      `docs/GAME_DESIGN.md` is retained for its research only. `game/` and
+      `play/` are orphaned prototypes of a dead design.
+- [ ] Direction: pick the next game, with the field no longer pre-filtered by
+      the mistaken no-artist assumption
+- [ ] Game: build it

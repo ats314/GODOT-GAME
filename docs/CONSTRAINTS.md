@@ -43,3 +43,10 @@ Consequences worth acting on:
   `Starter-Kit-City-Builder` (all Kenney, MIT code + CC0 art),
   `phantom-camera`, and `godot-open-rpg`. Concepts built on these should get a
   fair hearing — the next design pass should include at least one.
+
+## Direction (2026-08-09)
+
+**ACCRETE is dead** — rejected outright by the owner. `docs/GAME_DESIGN.md` is
+kept for its market research and its panel method, not as a plan. The next
+design pass starts from an open field: no art constraint, no dimensionality
+assumption, and at least one concept built on the unused 3D foundation.
