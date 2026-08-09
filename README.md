@@ -11,9 +11,9 @@ Not web, not mobile, not console. See `docs/PLATFORM_TARGETS.md` for the full
 list and for the engineering decisions that follow from it (renderer choice,
 threading, build size, input, storage).
 
-No concept is committed yet: a panel recommended DRAGLINE and the owner rejected
-it, so the choice is open (`docs/DECISIONS.md`). What is here is the reference
-library the game will be built from.
+Two demos are being built and compared. The first, **KEEPALIVE**, is in `game/`
+(`game/README.md`); the second has not been started. See `docs/DECISIONS.md` for
+how the choice was made and what was rejected.
 
 ## Repository layout
 
@@ -79,5 +79,6 @@ demo's `project.godot` (e.g. `third_party/godot-demo-projects/2d/dodge_the_creep
 - [x] Offline Godot 4.7.1 reference + generated indexes + distilled guides
 - [x] Platform target settled: desktop PC / Steam — `docs/PLATFORM_TARGETS.md`
 - [x] Previous concept and its web build removed; repository is a clean library
-- [x] **Game concept chosen: DRAGLINE** — `docs/GAME_CONCEPT_DECISION.md`
-- [ ] Scaffold the project and add a headless import/boot job to CI
+- [x] **Demo 1 built: KEEPALIVE** in `game/` — balance measured, renders, lints
+- [ ] Demo 2: the "frozen instant" reconstruction concept
+- [ ] Play both on a controller, pick one on the evidence

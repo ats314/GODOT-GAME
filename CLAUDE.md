@@ -10,18 +10,20 @@ are the targets. **Not a web/HTML5 game. Not mobile. Not console.** The full tar
 list and the engineering consequences are in `docs/PLATFORM_TARGETS.md` — read it
 before making any decision about renderers, threading, build size, input or storage.
 
-**No game project is scaffolded yet.** A previous concept (ACCRETE, a 2D neon
-incremental) and its HTML5 build were deleted, not archived —
-if you find a reference to `game/`, `play/`, `index.html`, `docs/GAME_DESIGN.md` or
-"ACCRETE" anywhere, it is a stale reference and should be fixed, not followed. (The
-files remain in git history if anything ever needs recovering.)
+A previous concept (ACCRETE, a 2D neon incremental) and its HTML5 build were deleted,
+not archived. A reference to `play/`, `index.html`, `docs/GAME_DESIGN.md` or "ACCRETE"
+is stale and should be fixed, not followed. `game/` now holds the KEEPALIVE demo below,
+which is unrelated to it. (The old files remain in git history.)
 
-**No concept is committed yet.** A six-concept panel recommended DRAGLINE (a physics
-hauling roguelite) and **the owner rejected it**. A second recommendation — deterministic
-perfect-information tactics against a spreading hazard — is on the table but not accepted.
-Read `docs/DECISIONS.md` for what is settled and what is still open, and
-`docs/GAME_CONCEPT_DECISION.md` for the concepts explored so far and why each was scored
-the way it was. Do not start building a game concept until this file says one is chosen.
+**Two demos are being built and compared**, not one game. The first, **KEEPALIVE**, is
+in `game/` — you never aim, you keep a dying machine alive by triaging power between
+weapons, coolant and servos while damage breaks specific components. The second, a
+"frozen instant" reconstruction concept, has not been started.
+
+Each demo exists to answer exactly one question, and for KEEPALIVE it is "is triage under
+pressure fun?" Do not add menus, saves, progression or a second enemy to it — those are
+worthless until that question has an answer. Read `docs/DECISIONS.md` before proposing
+anything; three earlier concepts were already rejected and are recorded there.
 
 ## Where things are
 
@@ -61,6 +63,7 @@ the APIs models reliably get wrong (`Spatial`, `KinematicBody`, `instance()`,
 ## Repository layout
 
 ```
+game/            KEEPALIVE, demo 1 of 2 (see game/README.md)
 library/         The agent-facing resource library
   api/           Generated lookup tables over the class reference (grep these)
   code/          Generated symbol tables over everything in third_party/
@@ -146,7 +149,10 @@ instead of implying it was verified.
 - `.gd.uid` sidecar files are engine-managed. Do not hand-edit or delete them.
 - CI (`.github/workflows/godot-ci.yml`) regenerates the indexes and fails if the
   committed ones are stale. Re-run the generators and commit their output whenever you
-  vendor something. When a game project lands, add a headless import/boot job to it.
+  vendor something.
+- The demo's balance is enforced, not decorative: `tests/balance_run.gd` exits non-zero if
+  a scripted competent policy wins outside the 35-90% band. If you change a number in
+  `game/scripts/balance.gd`, re-run it.
 - Controller parity and accessibility are project requirements, not polish. Steam Deck
   is a target machine.
 

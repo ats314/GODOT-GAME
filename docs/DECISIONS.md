@@ -9,7 +9,30 @@ the reasoning behind a reversal is usually more useful than the reversal itself.
 
 ---
 
-## OPEN — which game to build
+## IN PROGRESS — two demos, then a comparison
+
+**Status: building. KEEPALIVE first, the reconstruction concept second.**
+
+The owner picked two concepts to prototype and compare rather than committing to one:
+
+1. **KEEPALIVE** — you never aim; you keep a dying machine alive from its cockpit,
+   triaging power between weapons, coolant and servos while damage breaks specific
+   components. Built in `game/` — see `../game/README.md`.
+2. **The frozen instant** — a disaster stopped one second before it finished, which you
+   walk through and rewind to establish what happened. Not started.
+
+Each demo answers exactly one question. For KEEPALIVE it is "is triage under pressure
+fun?"; nothing else in that build matters. The comparison happens on the owner's PC with
+a controller, because feel is the one thing the container cannot judge.
+
+Both were chosen after three earlier recommendations were rejected. The pattern in the
+rejections was consistent and worth remembering: the first pitches led with **mediums and
+technologies** rather than with a player, a fantasy and a reason to press retry. A concept
+that opens with a rendering technique or a design pattern is not a game concept.
+
+---
+
+## SUPERSEDED — which game to build
 
 **Status: undecided. Do not scaffold a game project yet.**
 
