@@ -21,6 +21,8 @@ third_party/               Vendored snapshots of freely licensed Godot projects
   Terrain3D/               High-performance 3D terrain addon (GDExtension)
   ShaderV/                 Visual-shader node collection addon
 docs/
+  CONSTRAINTS.md           What is actually a constraint on this project (and
+                           what is not) — check design assumptions here first
   GODOT_CODE_SURVEY.md     Deep-dive survey: what every vendored project
                            teaches and what we reuse from it
   RESOURCES.md             Curated index of useful Godot information online

@@ -1,8 +1,8 @@
 # New Game Idea — CAUSTIC
 
 A fresh concept for the idea bank, designed against the same constraints that
-produced ACCRETE (`docs/GAME_DESIGN.md`): Godot 4, no artist, controller-only
-owner, 2-3 month part-time scope, ~70% lift-and-adapt from the vendored survey
+produced ACCRETE (`docs/GAME_DESIGN.md`): Godot 4, controller-only owner,
+2-3 month part-time scope, ~70% lift-and-adapt from the vendored survey
 (`docs/GODOT_CODE_SURVEY.md`).
 
 **Status:** unresearched concept. The mechanical and engineering claims below
@@ -95,8 +95,10 @@ where the replay value lives.
 The beam is the art. Pure additive light on near-black, every object a
 Polygon2D outline of six to twelve vertices, every beam a Line2D using the
 antialiasing-gradient texture trick, WorldEnvironment glow doing all the
-atmosphere. Zero drawn sprites, same as ACCRETE — the no-artist constraint is
-neutralised rather than fought.
+atmosphere. No drawn sprites needed, same as ACCRETE — chosen because it is
+fast and because the beam should look like light, not because art is off the
+table (`docs/CONSTRAINTS.md`). Purchased or commissioned art can be layered in
+wherever it beats primitives.
 
 The one idea worth protecting: **colour is a mechanic that renders itself.**
 Splitters emit real red/green/blue child beams, and additive blending means
@@ -203,7 +205,7 @@ they are mitigations for a real weakness, not a refutation of it.
 ## How this relates to ACCRETE
 
 It is a sibling, not a replacement. It shares roughly three quarters of the
-vendored foundation, the neon-vector art solution, the no-artist constraint, the
+vendored foundation, the neon-vector art solution, the
 controller-first requirement, and the 60%-efficiency idle contract — so the
 shell, glow, audio, and swarm work transfer either way. It differs in the only
 places that matter for a green-light decision: the core verb (aim geometry, not

@@ -21,8 +21,9 @@ strength.
   systems. The only genuinely new subsystem is the economy math — pure
   GDScript, iterable from a spreadsheet, no engine risk.
 - **Its look is what our code is best at.** Neon vector minimalism over
-  WorldEnvironment glow — zero drawn sprites required, which neutralizes
-  our no-artist constraint instead of fighting it.
+  WorldEnvironment glow — a deliberate art *choice* that happens to need no
+  drawn sprites, so it ships fast and cheap. It is not forced: see
+  `docs/CONSTRAINTS.md` — art is not a constraint on this project.
 
 ## Panel scores
 
@@ -65,7 +66,7 @@ Your progress is physically visible on screen at all times: every kill accretes 
 
 ## Art direction
 
-Neon vector minimalism on a near-black nebula field — the exact look the vendored code is best at, and the look Nodebuster already proved sells in this genre. Everything is Godot primitives: enemies are 2-4 sided Polygon2D silhouettes per family (triangles dart, squares tank, pentagons harvest), the core is layered draw_circle + draw_arc rings, beams are AA-textured Line2D, and each matter tier is one saturated accent hue (iron cyan, gold amber, then violet, crimson) over the base palette so progression reads as the screen literally warming in color. WorldEnvironment glow does the heavy lifting (2d/glow recipe, Forward+), GPUParticles2D handles all death/pickup/trail effects from the particles demo recipes, FastNoiseLite (misc/noise_viewer) generates the parallax nebula backdrop tinted by the spectrum analyzer, and the HUD sits on a glow-exempt CanvasLayer using an MSDF-imported OFL font (Xolonium, license retained). Zero drawn sprites required; optional Kenney CC0 particle/UI sheets as garnish. Capsule art is the one commissioned-or-carefully-made exception: a single dramatic render of the fortress-sun (mock it in-engine with glow cranked, screenshot, and paint over).
+Neon vector minimalism on a near-black nebula field — the exact look the vendored code is best at, and the look Nodebuster already proved sells in this genre. Everything is Godot primitives: enemies are 2-4 sided Polygon2D silhouettes per family (triangles dart, squares tank, pentagons harvest), the core is layered draw_circle + draw_arc rings, beams are AA-textured Line2D, and each matter tier is one saturated accent hue (iron cyan, gold amber, then violet, crimson) over the base palette so progression reads as the screen literally warming in color. WorldEnvironment glow does the heavy lifting (2d/glow recipe, Forward+), GPUParticles2D handles all death/pickup/trail effects from the particles demo recipes, FastNoiseLite (misc/noise_viewer) generates the parallax nebula backdrop tinted by the spectrum analyzer, and the HUD sits on a glow-exempt CanvasLayer using an MSDF-imported OFL font (Xolonium, license retained). No drawn sprites are required by this direction, which is why it is cheap and fast — not because art is unavailable (see `docs/CONSTRAINTS.md`); Kenney CC0 particle/UI sheets, purchased packs, or commissioned work can be layered in wherever they beat primitives. Capsule art is worth commissioning outright: a single dramatic render of the fortress-sun (or mock it in-engine with glow cranked, screenshot, and paint over).
 
 ## Meta progression
 
