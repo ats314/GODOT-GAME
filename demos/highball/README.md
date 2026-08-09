@@ -8,12 +8,29 @@ including, if you panic, the one car you need to win.
 
 ## Run it
 
-Open Godot 4.7.x → **Import** → select `demos/highball/project.godot` → **F5**.
+**On your own machine** — open Godot 4.7.x → **Import** → select
+`demos/highball/project.godot` → **F5**. Or `godot --path demos/highball`.
 
-Or headless from the CLI:
+**In a Codespace** — create one on this branch and the devcontainer installs the
+pinned engine for you (`.devcontainer/devcontainer.json` →
+`tools/setup_environment.sh`). Then:
 
+```bash
+~/.cache/godot-bin/Godot_v4.7.1-stable_linux.x86_64 --path demos/highball
 ```
-godot --path demos/highball
+
+Open the forwarded **port 6080** ("Godot editor (noVNC)", password `godot`) and the
+game window is on that desktop. Be warned: a Codespace has no GPU, so this renders
+through Mesa's software rasterizer — expect single-digit frame rates. It is enough
+to confirm the demo runs and to look at it. It is **not** enough to judge how it
+feels, which is the entire question this slice exists to answer
+(`docs/CODESPACES.md` is explicit about this line).
+
+**Verify it headlessly** — no display needed, and this is what CI runs:
+
+```bash
+tools/godot_smoke_test.sh demos/highball res://scenes/main.tscn
+tools/godot_smoke_test.sh demos/highball res://scenes/main.tscn --render   # saves a frame
 ```
 
 ## Controls
@@ -68,7 +85,8 @@ at the top of `scripts/main.gd`.
 ## Tests
 
 ```
-godot --headless --path demos/highball res://scenes/soak.tscn
+~/.cache/godot-bin/Godot_v4.7.1-stable_linux.x86_64 \
+    --headless --path demos/highball res://scenes/soak.tscn
 ```
 
 Runs three headless phases at 40× time scale and asserts that all three

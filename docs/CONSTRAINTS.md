@@ -1,52 +1,41 @@
 # Project Constraints — what is actually true
 
-This file exists because a constraint that was never stated got treated as
-fact. Every design doc in `docs/` must check its assumptions against this
-file, and anything asserted as a constraint anywhere else in the repo without
-a source here should be treated as an assumption, not a rule.
+This file exists because a constraint that was never stated got treated as fact,
+propagated through every design document, and quietly narrowed the field of games
+this project would consider. Any document asserting a constraint without a source
+here is stating an assumption, not a rule.
 
 ## Real constraints (owner-stated)
 
 1. **Controller-only accessibility — hard.** The project owner plays
-   controller-only. Every game concept must have full controller parity from
-   day one: no mouse-only interactions, no forced twitch input, no
-   hold-and-mash, every menu and card d-pad navigable with visible focus. This
-   is the one requirement no design may trade away.
+   controller-only. Every concept must have full controller parity from day one:
+   no mouse-only interactions, no forced twitch input, no hold-and-mash, every
+   menu and card d-pad navigable with visible focus.
+2. **Desktop PC via Steam** is the platform target — see `docs/PLATFORM_TARGETS.md`.
 
 ## Explicitly NOT constraints
 
-- **Art is not a constraint.** Drawn sprites, purchased asset packs,
-  commissioned work, 3D models, and hand-made animation are all available.
-  Choose an art direction because it serves the game, not because it avoids
-  making art.
-- **Nothing else is off the table** either — genre, dimensionality, engine
-  features, budget lines, or scope. Constraints on any of these must be
-  recorded here, with their source, before a design doc may cite them.
+- **Art is not a constraint.** Drawn sprites, purchased asset packs, commissioned
+  work, 3D models and hand-made animation are all available. The owner's words:
+  *"Literally nothing is off the table."* Choose an art direction because it
+  serves the game, not because it avoids making art.
+- Nothing else is off the table either — genre, dimensionality, engine features,
+  budget, scope. New constraints must be recorded here, with their source, before
+  a design document may cite them.
 
-## Corrected assumption (2026-08-09)
+## The assumption, and where it still survives (2026-08-09)
 
-`docs/GAME_DESIGN.md` asserted "our no-artist constraint" and every later doc
-inherited it. It was never sourced to the owner — unlike the controller
-requirement, which is tagged as owner-stated. The owner has since confirmed
-that **literally nothing is off the table**.
+The deleted `docs/GAME_DESIGN.md` asserted *"our no-artist constraint"* and every
+document downstream inherited it. It was never sourced to the owner — unlike the
+controller requirement, which was always tagged as owner-stated. When asked
+directly, the owner confirmed nothing is off the table.
 
-Consequences worth acting on:
+**It has already recurred.** `docs/GAME_CONCEPT_DECISION.md` describes this as
+*"a team that has explicitly declared it has no visual designer"* and treats that
+as a fixed input when weighing DRAGLINE's asset-flip risk — the single strongest
+argument against the concept it selects. That premise is not established. Whether
+the owner wants to commission art is a decision the owner has not been asked to
+make, and DRAGLINE's art risk should be re-weighed once they have.
 
-- The neon-vector direction in ACCRETE and CAUSTIC stays valid — it is a good,
-  cheap, fast look that suits both games — but it is now a *choice* those docs
-  defend on merit, not a workaround. Both have been reworded.
-- The whole idea bank (ACCRETE, LARIAT, DEAD WAX, DEATHSTEP, FLOCKFALL,
-  CAUSTIC) is 2D vector abstraction, because that is what the assumption
-  allowed. That is a selection bias, not a conclusion.
-- Roughly half of the vendored foundation is 3D and entirely unused by every
-  concept so far: `Terrain3D`, `Starter-Kit-3D-Platformer`, `Starter-Kit-FPS`,
-  `Starter-Kit-City-Builder` (all Kenney, MIT code + CC0 art),
-  `phantom-camera`, and `godot-open-rpg`. Concepts built on these should get a
-  fair hearing — the next design pass should include at least one.
-
-## Direction (2026-08-09)
-
-**ACCRETE is dead** — rejected outright by the owner. `docs/GAME_DESIGN.md` is
-kept for its market research and its panel method, not as a plan. The next
-design pass starts from an open field: no art constraint, no dimensionality
-assumption, and at least one concept built on the unused 3D foundation.
+What the assumption cost while it was unexamined: every concept generated under it
+was a low-art abstraction, which is a selection bias rather than a conclusion.
