@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - "game/**"
+      - "demos/**"
       - ".github/workflows/godot-ci.yml"
   pull_request:
     paths:
       - "game/**"
+      - "demos/**"
       - ".github/workflows/godot-ci.yml"
 
 jobs:
@@ -40,6 +42,17 @@ jobs:
         run: |
           ~/godot/godot --headless --path game res://scenes/main_menu.tscn --quit-after 300 2>&1 | tee boot.log
           ~/godot/godot --headless --path game res://scenes/run.tscn --quit-after 300 2>&1 | tee -a boot.log
+
+      - name: Import HIGHBALL demo
+        run: ~/godot/godot --headless --path demos/highball --import 2>&1 | tee -a import.log
+
+      - name: Boot HIGHBALL demo
+        run: ~/godot/godot --headless --path demos/highball res://scenes/main.tscn --quit-after 300 2>&1 | tee -a boot.log
+
+      - name: HIGHBALL soak test (all three endings reachable)
+        run: |
+          ~/godot/godot --headless --path demos/highball res://scenes/soak.tscn 2>&1 | tee soak.log
+          grep -q "SOAK PASS" soak.log
 
       - name: Fail on script errors
         run: |

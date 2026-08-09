@@ -2,15 +2,37 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="refresh" content="0; url=./play/">
-  <title>ACCRETE</title>
+  <title>Playable builds</title>
   <style>
-    body { background:#030614; color:#aef4ff; font-family:sans-serif;
-           display:grid; place-items:center; height:100vh; margin:0; }
-    a { color:#59c2d8; }
+    body { background:#06080f; color:#dfe6f2; font-family:system-ui, sans-serif;
+           display:grid; place-items:center; min-height:100vh; margin:0; }
+    main { max-width:34rem; padding:2rem; }
+    h1 { font-size:1.1rem; letter-spacing:.18em; text-transform:uppercase;
+         color:#7d8aa0; font-weight:600; }
+    a { color:#ffc98a; text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    li { margin:1.4rem 0; line-height:1.5; }
+    .name { font-size:1.5rem; }
+    .dead .name { color:#6d7486; }
+    .note { color:#8b93a5; font-size:.92rem; }
   </style>
 </head>
 <body>
-  <p>Igniting… <a href="./play/">click here if not redirected</a>.</p>
+  <main>
+    <h1>Playable builds</h1>
+    <ul>
+      <li>
+        <a class="name" href="./play/highball/">HIGHBALL</a>
+        <div class="note">Vertical slice. A freight train that cannot stop —
+        walk it, fix it at speed, cut cars off the back, make the yard with the
+        payload still aboard.</div>
+      </li>
+      <li class="dead">
+        <a class="name" href="./play/">ACCRETE</a>
+        <div class="note">Rejected design, kept as a runnable reference only.
+        See <code>docs/GAME_DESIGN.md</code>.</div>
+      </li>
+    </ul>
+  </main>
 </body>
 </html>
