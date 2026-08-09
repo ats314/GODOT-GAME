@@ -20,6 +20,8 @@ files intact and their `.git` history stripped (plain snapshots).
 | godot-open-rpg | https://github.com/gdquest-demos/godot-open-rpg | `19bd328fae9e4b534d3bb6db380a3d871d6ea58f` | MIT | GDQuest open RPG (Godot 4.6): combat, inventory, dialogs, grid movement. |
 | Terrain3D | https://github.com/TokisanGames/Terrain3D | `53e9f64c7232ccde774041d83fcf8d611747cc38` | MIT | High-performance 3D terrain GDExtension (Godot 4.5 target). Copyright (c) 2023-2026 Cory Petkovsek, Roope Palmroos, and contributors. |
 | ShaderV | https://github.com/arkology/ShaderV | `b99ad61d4ab8b6b7e4ed90243990afb150015f97` | MIT | Visual-shader node collection addon (Godot 4.2 target). Copyright (c) 2019 arkology. |
+| godot-class-reference | https://github.com/godotengine/godot | `a13da4feb8d8aefc283c3763d33a2f170a18d541` (tag `4.7.1-stable`) | MIT | **Partial vendor**: the engine's own class reference XML only — `doc/classes/`, `modules/*/doc_classes/` and `platform/*/doc_classes/`, flattened to `classes/` (1078 files). No engine source. Pinned to the exact tag our CI runs, so it is authoritative for our target version. Engine `LICENSE.txt`, `COPYRIGHT.txt` and `AUTHORS.md` retained. Copyright (c) 2014-present Godot Engine contributors; (c) 2007-2014 Juan Linietsky, Ariel Manzur. |
+| godot-docs | https://github.com/godotengine/godot-docs | `4b404adc7c3a4eb7b5392bed8833cdc52f164338` (branch `4.7`) | CC-BY-3.0 | **Partial vendor**: the manual as text — all 517 `.rst` pages except the generated class reference (superseded by the XML above) and all images (~1.8k files, ~200 MB, omitted). **Attribution required**: "Godot Engine documentation contributors, CC BY 3.0" — see `third_party/godot-docs/LICENSE.txt` and `AUTHORS.md`. |
 
 ## Policy for new imports
 

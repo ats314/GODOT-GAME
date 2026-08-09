@@ -1,0 +1,14 @@
+# path	name	version	author	description
+third_party/Godot-Game-Template/addons/maaacks_game_template	Maaack's Game Template	1.5.1	Marek Belski	
+third_party/Terrain3D/project/addons/terrain_3d	Terrain3D	1.1.0-dev	Cory Petkovsek & Roope Palmroos	A high performance, editable terrain system for Godot 4.
+third_party/beehave/addons/beehave	Beehave	2.9.3-dev	bitbrain	🐝 Behavior Tree addon for Godot Engine
+third_party/beehave/addons/gdUnit4	gdUnit4	6.1.3	Mike Schulze	Unit Testing Framework for Godot Scripts
+third_party/godot-demo-projects/3d/ik/addons/sade	S.A.D.E (Skeleton3D additions and extensions)	0.2.0	Godot Community	
+third_party/godot-demo-projects/misc/2.5d/addons/node25d	Node25D	1.0	Aaron Franke	Adds Node25D
+third_party/godot-demo-projects/mono/2.5d/addons/node25d-cs	Node25D (C#)	1.0	Aaron Franke	Adds Node25D
+third_party/godot-demo-projects/plugins/addons/custom_node	Heart Plugin Demo	1.0	Juan Linietsky	Adds a new Heart node in 2D
+third_party/godot-demo-projects/plugins/addons/main_screen	Main Screen Plugin Demo	1.0	Aaron Franke, Julian Murgia	Demonstrates how to make a main screen plugin.
+third_party/godot-demo-projects/plugins/addons/material_creator	Material Creator Plugin Demo	1.0	Aaron Franke, TwistedTwigleg, Šarūnas Ramonas	Loads and saves a 3D Material from an external text file
+third_party/godot-demo-projects/plugins/addons/simple_import_plugin	Simple Importer Plugin Demo	1.0	George Marques	Imports a 3D Material from an external text file
+third_party/godot-open-rpg/addons/dialogic	Dialogic	2.0-Alpha-20 WIP (Godot 4.4+)	Jowan, Emi, Cake and more!	
+third_party/phantom-camera/addons/phantom_camera	Phantom Camera	0.11.0.3	Marcus Skov	Control the movement and dynamically tween 2D & 3D cameras positions. Built for Godot 4. Inspired by Cinemachine.
