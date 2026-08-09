@@ -3,15 +3,15 @@
 Mechanical rules for writing GDScript in **Godot 4.7.1 stable** on a **desktop (Windows/Linux/Steam Deck)** target:
 naming, declaration order, formatting, the full static-typing syntax, the annotations that exist in 4.7, and the
 subset of style choices that actually change runtime cost. Read it before writing or reviewing any `.gd` file, and
-whenever you are about to claim "typing is just documentation" (it is not) or "typed arrays are fastest" (they are not).
+before claiming "typing is just documentation" (it is not) or "typed arrays are fastest" (they are not).
 
 Sources, all vendored here. In `third_party/godot-docs/tutorials/scripting/gdscript/`: `gdscript_styleguide.rst`,
 `static_typing.rst`, `gdscript_basics.rst`, `gdscript_exports.rst`, `warning_system.rst`,
-`gdscript_documentation_comments.rst`, `gdscript_format_string.rst`. Plus
-`third_party/godot-docs/tutorials/best_practices/{godot_interfaces,data_preferences}.rst`,
+`gdscript_documentation_comments.rst`, `gdscript_format_string.rst` — bare `.rst` names below mean this directory.
+Plus `third_party/godot-docs/tutorials/best_practices/{godot_interfaces,data_preferences}.rst`,
 `third_party/godot-docs/tutorials/performance/cpu_optimization.rst`,
 `third_party/godot-docs/tutorials/migrating/upgrading_to_godot_4.7.rst`, and the 4.7.1-stable class XMLs under
-`third_party/godot-class-reference/classes/`. Bare `.rst` filenames below refer to the gdscript/ directory.
+`third_party/godot-class-reference/classes/`.
 
 ## Version gates — which 4.x added what
 
@@ -153,7 +153,6 @@ var item_tiles: Dictionary[Vector2i, Item] = { Vector2i(0, 0): Item.new() }
 ```
 
 Rules that repeatedly trip agents up:
-
 - `Array` ≡ `Array[Variant]`; `Dictionary` ≡ `Dictionary[Variant, Variant]`. For dictionaries **both** parameters
   must be written; use `Variant` explicitly to leave one open (`Dictionary[String, Variant]`).
 - Typing applies to `for` loop variables and to some operators — `[]`, `[...] =`, and `+` for arrays. It does **not**
@@ -262,7 +261,6 @@ inspector even when the script is not `@tool`, but **setters and getters only ru
    → 6. `_ready()`.
 
 Consequences an agent must respect:
-
 - **Never combine `@onready` and `@export` on the same variable.** `@onready` runs *after* the exported value is
   applied and overwrites it. This produces `ONREADY_WITH_EXPORT`, which is **treated as an error by default**;
   the docs say do not disable or ignore it.
@@ -362,8 +360,7 @@ assert(enemy_power < 256, "Enemy is too powerful!")
 | `@abstract` | 4.5+. Classes and methods; see above |
 | `@onready` | Node-derived classes only; see ordering hazards |
 | `@warning_ignore(warning, ...)` | Suppresses on the **next statement** |
-| `@warning_ignore_start(warning, ...)` | Suppresses to end of file or matching restore. Literal strings only |
-| `@warning_ignore_restore(warning, ...)` | Ends a start-region; resets to project settings. Literal strings only |
+| `@warning_ignore_start` / `@warning_ignore_restore` `(warning, ...)` | Region suppression: start runs to end of file or to the matching restore, which resets to project settings. Literal strings only |
 | `@rpc(mode, sync, transfer_mode, transfer_channel)` | Multiplayer only |
 | `@export…` | See the export table above |
 
@@ -381,9 +378,8 @@ Any warning can be escalated to a hard error per-warning in the same settings pa
 
 `##` above a member (or above its annotations) documents it; `##` at the top of the file documents the script, and
 must precede all member documentation. Order inside a script docstring: brief line, blank `##` line, detailed
-description, then tags. Tags: `@tutorial:` / `@tutorial(Title):`, `@deprecated` / `@deprecated: text`,
-`@experimental` / `@experimental: text`. Members may carry `@deprecated` and `@experimental`. Documentable members:
-signals, enums, enum values, constants, variables, functions, inner classes.
+description, then tags — `@tutorial:` / `@tutorial(Title):`, `@deprecated[: text]`, `@experimental[: text]`; members
+take the latter two. Documentable: signals, enums, enum values, constants, variables, functions, inner classes.
 
 ## What actually costs performance
 
@@ -394,11 +390,10 @@ The manual's framing, not folklore. Measure before acting: `Time.get_ticks_usec(
 ### Typed vs untyped code paths — a real speedup, not just readability
 
 `static_typing.rst`: *"typed GDScript improves performance by using optimized opcodes when operand/argument types
-are known at compile time."* The win is compile-time — knowing both operand types lets the compiler emit a
-specialised instruction instead of a generic Variant one. Typing therefore pays off exactly where the hot arithmetic
-is, and it is why the untyped global math functions have typed counterparts. **Prefer the typed variants inside
-loops**; the same page concludes they "ensure you have safe lines and benefit from typed instructions for better
-performance":
+are known at compile time."* Knowing both operand types lets the compiler emit a specialised instruction instead of
+a generic Variant one, so typing pays off exactly where the hot arithmetic is — which is why the untyped global math
+functions have typed counterparts. **Prefer the typed variants inside loops**; the same page concludes they "ensure
+you have safe lines and benefit from typed instructions for better performance":
 
 - `abs()` → `absf()`, `absi()`, `Vector2.abs()`, `Vector3.abs()`, …
 - `ceil()`/`floor()`/`round()` → `ceilf()`/`ceili()`, `floorf()`/`floori()`, `roundf()`/`roundi()`, plus the
@@ -411,8 +406,8 @@ performance":
 Ceiling on all of this: every GDScript operation goes through the scripting API's lookup chain
 (`data_preferences.rst`) — the class's own data, then each base class, up to `Object`. That indirection is why
 `cpu_optimization.rst` says plainly that in GDScript "ease of use is considered more important than performance",
-and why heavy numeric work belongs in engine-side calls (servers, built-in methods, `Curve`/`Tween`/physics) rather
-than in a GDScript loop. Built-in engine functions run at the same speed regardless of scripting language.
+and why heavy numeric work belongs in engine-side calls (servers, built-in methods, `Curve`/`Tween`/physics), which
+run at the same speed regardless of scripting language, rather than in a GDScript loop.
 
 ### Array vs typed array vs packed array
 
@@ -422,10 +417,10 @@ modification speed, and packed arrays also use less memory. Worst case, a packed
 `Array`. If the element type is known (including your own classes), a typed array beats an untyped one; there is no
 case where leaving it untyped is the faster choice.
 
-The trade-off is API surface: packed arrays lack conveniences like `Array.map()`. The manual's own threshold —
-below roughly tens of thousands of elements, prefer regular or typed arrays, because the convenience methods make
-the code easier to write and can be faster if you use them a lot. Above that, or where memory fragmentation
-matters, switch to a packed type if the element type fits.
+The trade-off is API surface: packed arrays lack conveniences like `Array.map()`. The manual's own threshold — below
+roughly tens of thousands of elements, prefer regular or typed arrays, because the convenience methods make the code
+easier to write and can be faster if you use them a lot. Above that, or where memory fragmentation matters, switch
+to a packed type if the element type fits.
 
 Packed arrays are always passed by reference — but a packed array returned from a *built-in property or method* is a
 copy, so mutate it and assign it back. In 4.7 setting one element of a packed-array property no longer invokes the
