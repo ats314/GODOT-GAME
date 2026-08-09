@@ -3,12 +3,12 @@
 A catalogue of the Godot APIs that language models reliably get wrong, because their training
 corpus is dominated by Godot 3.x tutorials and early-4.x blog posts. Every symbol in backticks
 below was checked against the vendored `4.7.1-stable` class reference in
-`/home/user/GODOT-GAME/third_party/godot-class-reference/classes/`; every version claim was
-checked against `/home/user/GODOT-GAME/third_party/godot-docs/tutorials/migrating/`. Read it
+`third_party/godot-class-reference/classes/`; every version claim was
+checked against `third_party/godot-docs/tutorials/migrating/`. Read it
 before writing GDScript, and grep it during review when a snippet "looks like Godot but older".
 
 Engine is **Godot 4.7.1 stable**. Target is **desktop PC on Steam** (Windows, Linux, Steam Deck) —
-see `/home/user/GODOT-GAME/docs/PLATFORM_TARGETS.md`. Threads, `user://` as a real directory, and
+see `docs/PLATFORM_TARGETS.md`. Threads, `user://` as a real directory, and
 Forward+ are all available; nothing here needs a web-export caveat.
 
 ---
@@ -221,7 +221,7 @@ It **does** take a per-frame motion vector, so `velocity * delta` is correct the
 `PhysicsTestMotionResult2D`), plus `get_normal()`, `get_collider()`, `get_remainder()`, `get_depth()`.
 
 Worked example in this repo:
-`/home/user/GODOT-GAME/third_party/godot-demo-projects/2d/platformer/player/player.gd`.
+`third_party/godot-demo-projects/2d/platformer/player/player.gd`.
 
 ---
 
@@ -277,7 +277,7 @@ introduction, so do not claim they exist in 4.0.
 `CACHE_MODE_IGNORE_DEEP` (3), `CACHE_MODE_REPLACE_DEEP` (4).
 
 Worked example:
-`/home/user/GODOT-GAME/third_party/godot-demo-projects/loading/load_threaded/load_threaded.gd`.
+`third_party/godot-demo-projects/loading/load_threaded/load_threaded.gd`.
 
 Saving: `ResourceSaver.save(resource: Resource, path: String = "", flags: int = 0)` — **arguments
 were swapped in 4.0**; 3.x was `save(path, resource)`. Same for `ResourceFormatSaver._save()`.
@@ -420,7 +420,7 @@ Since 4.4, saving a `.gd` script writes a sibling `foo.gd.uid` containing a sing
 `uid://ddbwt6ntihs35`. Scenes and resources reference scripts and assets by that UID
 (`[ext_resource type="Script" uid="uid://…" path="res://…"]`) rather than only by path, so a file
 can be moved or renamed without breaking references. There are 1406 of these in the vendored demo
-projects — e.g. `/home/user/GODOT-GAME/third_party/godot-demo-projects/2d/platformer/player/player.gd.uid`.
+projects — e.g. `third_party/godot-demo-projects/2d/platformer/player/player.gd.uid`.
 
 Rules for agents:
 
