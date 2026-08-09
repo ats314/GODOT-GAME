@@ -17,11 +17,13 @@ var _mouse_aim := true         # last input source decides how aim updates
 var _invuln_until := 0.0
 var _pulse := 0.0
 var _glow_punch := 0.0
+var _magnet_flash := 0.0
 
 func _ready() -> void:
 	add_to_group(&"core_group")
 	hp = GameState.mods.max_hp
 	Events.ring_level_up.connect(_on_level_up)
+	Events.upgrade_chosen.connect(_on_upgrade_chosen)
 
 func ring_radius() -> float:
 	return CORE_RADIUS + STRATA_GAP * (1.0 + GameState.ring_level * 0.35)
@@ -29,6 +31,7 @@ func ring_radius() -> float:
 func _process(delta: float) -> void:
 	_pulse += delta
 	_glow_punch = maxf(0.0, _glow_punch - delta * 3.0)
+	_magnet_flash = maxf(0.0, _magnet_flash - delta * 0.5)
 	beam_on = Input.is_action_pressed(&"focus_fire")
 	if beam_on:
 		_update_beam(delta)
@@ -94,6 +97,10 @@ func heal_full_segment() -> void:
 func _on_level_up(_level: int) -> void:
 	_glow_punch = 1.0
 
+func _on_upgrade_chosen(id: StringName) -> void:
+	if id == &"magnet":
+		_magnet_flash = 1.0  # light up the ring the card just widened
+
 func _soft_circle(pos: Vector2, r: float, c: Color, steps: int = 4) -> void:
 	# painted bloom: stacked translucent discs, brightest in the middle
 	for i in steps:
@@ -123,9 +130,12 @@ func _draw() -> void:
 		var ang := _pulse * (0.5 + m * 0.13) + TAU * m / 5.0
 		_soft_circle(Vector2.from_angle(ang) * rr, 6.0, Color(0.7, 1.3, 1.4, 0.5), 3)
 
-	# magnet radius hint
+	# mass pull radius: shards inside this ring race home. Drawn in the MASS
+	# card colour and flared when Stronger Pull is picked, so that upgrade has
+	# something visible to point at (it was all but invisible at 0.05 alpha).
 	draw_arc(Vector2.ZERO, GameState.mods.magnet_radius, 0.0, TAU, 96,
-			Color(0.3, 0.7, 0.8, 0.05), 2.0, true)
+			Color(0.78, 0.72, 1.0, 0.10 + _magnet_flash * 0.45),
+			2.0 + _magnet_flash * 2.5, true)
 
 	# beam: painted glow stack + hot white core
 	if beam_on:

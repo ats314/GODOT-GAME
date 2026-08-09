@@ -40,6 +40,27 @@ func show_stats() -> void:
 	]
 	box.add_child(stats)
 
+	var build := GameState.build_summary()
+	if not build.is_empty():
+		var caption := Label.new()
+		caption.text = "YOUR BUILD"
+		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		caption.add_theme_font_size_override(&"font_size", 17)
+		caption.add_theme_color_override(&"font_color", Color(0.5, 0.62, 0.7))
+		box.add_child(caption)
+
+		var parts := PackedStringArray()
+		for row in build:
+			parts.append(row.title if row.count == 1 else "%s ×%d" % [row.title, row.count])
+		var build_label := Label.new()
+		build_label.text = "   •   ".join(parts)
+		build_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		build_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		build_label.custom_minimum_size = Vector2(760, 0)
+		build_label.add_theme_font_size_override(&"font_size", 20)
+		build_label.add_theme_color_override(&"font_color", Color(0.68, 0.82, 0.88))
+		box.add_child(build_label)
+
 	var restart := Button.new()
 	restart.text = "  RE-IGNITE  (R)  "
 	restart.add_theme_font_size_override(&"font_size", 28)

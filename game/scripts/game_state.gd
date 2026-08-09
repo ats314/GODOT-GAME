@@ -16,6 +16,9 @@ var ring_level: int = 0
 var wave: int = 0
 var run_time: float = 0.0
 var mods: Dictionary = {}
+var owned: Dictionary = {}          # upgrade id -> times picked (shown on cards + HUD)
+var last_upgrade: StringName = &""  # what the confirmation toast reports
+var last_change: Array = []         # before/after rows for that pick
 
 const DEFAULT_MODS := {
 	beam_power = 26.0,      # beam damage per second
@@ -42,6 +45,9 @@ func reset_run() -> void:
 	wave = 0
 	run_time = 0.0
 	mods = DEFAULT_MODS.duplicate()
+	owned = {}
+	last_upgrade = &""
+	last_change = []
 
 func next_level_cost() -> float:
 	return BASE_LEVEL_COST * pow(LEVEL_COST_GROWTH, ring_level)
@@ -56,20 +62,24 @@ func add_mass(amount: float) -> void:
 		Events.ring_level_up.emit(ring_level)
 
 func apply_upgrade(id: StringName) -> void:
-	match id:
-		&"beam_power": mods.beam_power *= 1.35
-		&"beam_width": mods.beam_width *= 1.25
-		&"magnet": mods.magnet_radius *= 1.3
-		&"turret_add": mods.turret_count += 1
-		&"turret_power": mods.turret_power *= 1.3
-		&"turret_rate": mods.turret_rate = maxf(0.12, mods.turret_rate * 0.78)
-		&"plating": mods.max_hp += 1
-		&"bounty": mods.shard_bounty += 1
-		&"lance": mods.beam_pierce = minf(1.0, mods.beam_pierce + 0.22)
-		&"nova":
-			mods.nova_power *= 1.45
-			mods.nova_radius *= 1.15
+	# snapshot the before/after the card just promised, so the HUD can echo the
+	# exact same numbers back once the pick lands
+	last_upgrade = id
+	last_change = Upgrades.preview(id, mods)
+	Upgrades.apply_to(mods, id)
+	owned[id] = int(owned.get(id, 0)) + 1
 	Events.upgrade_chosen.emit(id)
+
+## Owned upgrades as {id, title, cat, count}, in the order they were first
+## picked — the player's build, for the HUD readout and the end-of-run recap.
+func build_summary() -> Array:
+	var rows := []
+	for id in owned:
+		var u := Upgrades.by_id(id)
+		if u.is_empty():
+			continue
+		rows.append({id = id, title = u.title, cat = u.cat, count = int(owned[id])})
+	return rows
 
 func finish_run() -> void:
 	best_mass = maxf(best_mass, total_mass)
