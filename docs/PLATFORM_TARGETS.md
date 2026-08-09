@@ -12,6 +12,26 @@
 | iOS / Android | **Not a target.** No touch input, no phone UI, no store presence |
 | Console | **Not a target.** Requires a third-party porting house; revisit only after a successful PC launch |
 
+## Development hardware, and what it can and cannot prove
+
+| Machine | Available | Good for | Misleading for |
+| --- | --- | --- | --- |
+| Owner's PC, high-end GPU, controller | yes | Game feel, visuals, responsiveness, real profiling | Whether the median buyer can run it |
+| Steam Deck / low-end machine | **no** | — | — |
+| GPU-less CI containers | yes | Correctness, boot, lint, rendered frames, screenshots | Anything about performance |
+
+Two consequences worth internalising:
+
+- **Feel is testable.** The owner plays with a controller on a monitor daily. Do not
+  discount a design because it depends on feel, and do not claim the container validated
+  feel — it cannot.
+- **Scaling down is not testable.** A high-end GPU systematically hides performance
+  problems: something running at 200 fps here can be unplayable for most of Steam, and
+  reviews would be the first sign. Mitigate deliberately — cap the frame rate during
+  development, test at low resolution, set an explicit budget rather than "it runs fine
+  on my machine", and buy a Deck or a cheap low-end laptop before the demo ships, not
+  before work starts.
+
 ## Why this is written down
 
 The repository used to contain a Web-only `export_presets.cfg`, a published HTML5

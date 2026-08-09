@@ -16,10 +16,18 @@ if you find a reference to `game/`, `play/`, `index.html`, `docs/GAME_DESIGN.md`
 "ACCRETE" anywhere, it is a stale reference and should be fixed, not followed. (The
 files remain in git history if anything ever needs recovering.)
 
-**The chosen concept is DRAGLINE** — a physics hauling roguelite where each delivery
-bolts another jointed trailer onto your rig. See `docs/GAME_CONCEPT_DECISION.md` for the
-design, the kill criteria and the first two weeks. It was picked by a six-concept,
-three-judge panel; the losing concepts and the reasoning are recorded there too.
+**No concept is committed yet.** A six-concept panel recommended DRAGLINE (a physics
+hauling roguelite) and **the owner rejected it**. A second recommendation — deterministic
+perfect-information tactics against a spreading hazard — is on the table but not accepted.
+Read `docs/DECISIONS.md` for what is settled and what is still open, and
+`docs/GAME_CONCEPT_DECISION.md` for the concepts explored so far and why each was scored
+the way it was. Do not start building a game concept until this file says one is chosen.
+
+## Where things are
+
+`docs/DECISIONS.md` — what is settled and what is open. Read it before proposing anything.
+`docs/README.md` — routes every other document by the question it answers.
+`library/guides/README.md` — routes the Godot 4.7 guides by the question it answers.
 
 ## Engine version
 
@@ -58,7 +66,8 @@ library/         The agent-facing resource library
   code/          Generated symbol tables over everything in third_party/
   guides/        Distilled Godot 4.7 knowledge, written against the vendored docs
 third_party/     Vendored upstream code and references, licences intact
-docs/            Platform targets, the concept decision, the code survey, resources
+docs/            Decisions, platform targets, testing, code survey, resources
+                 (start at docs/README.md — it routes by question)
 tools/           Index generators and validators
 ```
 
@@ -103,8 +112,11 @@ Before reporting that a change works: boot it, lint what you touched, and if the
 is visual, render it and actually look at the screenshot.
 
 What the container **cannot** tell you: performance (software rasterization is orders of
-magnitude off — profile on a Steam Deck), driver behaviour, audio output, or game feel.
-When you could not check something, say so plainly instead of implying it was verified.
+magnitude off), driver behaviour, or audio output. Profile on the owner's PC — and see the
+hardware note in `docs/PLATFORM_TARGETS.md`, because that machine has a high-end GPU and
+will therefore hide problems that hit the median buyer. Game feel is testable: the owner
+plays with a controller on a monitor. When you could not check something, say so plainly
+instead of implying it was verified.
 
 ## Owner requirements
 

@@ -1,4 +1,13 @@
-# Game concept decision — DRAGLINE
+# Concept exploration record — DRAGLINE (REJECTED)
+
+> **Status: DRAGLINE was rejected by the owner.** This document is history, not a plan.
+> It is kept because the six concepts, the three judges' comparative scoring and the
+> reasoning are worth having on record — but do not start building from it, and do not
+> revive DRAGLINE. `DECISIONS.md` supersedes this file and records what is actually open.
+>
+> Note also that the kill criteria below assume a Steam Deck for weekly testing. There is
+> no Steam Deck; see the hardware table in `PLATFORM_TARGETS.md`.
+
 
 Six concepts were generated from deliberately different angles, then scored
 independently by three judges applying incompatible criteria: a market analyst on

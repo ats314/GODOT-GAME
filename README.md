@@ -11,9 +11,9 @@ Not web, not mobile, not console. See `docs/PLATFORM_TARGETS.md` for the full
 list and for the engineering decisions that follow from it (renderer choice,
 threading, build size, input, storage).
 
-The game to build has been chosen — **DRAGLINE**, a physics hauling roguelite
-(`docs/GAME_CONCEPT_DECISION.md`). The project itself is not scaffolded yet; what
-is here is the reference library it will be built from.
+No concept is committed yet: a panel recommended DRAGLINE and the owner rejected
+it, so the choice is open (`docs/DECISIONS.md`). What is here is the reference
+library the game will be built from.
 
 ## Repository layout
 
@@ -42,12 +42,14 @@ tools/                     Index generators, environment setup, Godot smoke test
 .devcontainer/             Codespaces: a container that can build, run and render
 .claude/                   SessionStart hook so web sessions get the same toolchain
 docs/
-  PLATFORM_TARGETS.md      What we ship and on what — read before deciding
+  README.md                Documentation index — routes by question
+  DECISIONS.md             What is settled, what is open — read this first
+  PLATFORM_TARGETS.md      What we ship, on what, and on what hardware
   CODESPACES.md            Working in a cloud container: what it can and cannot prove
   TESTING.md               Headless validation, measured rather than assumed
   GODOT_CODE_SURVEY.md     Deep-dive survey: what every vendored project
                            teaches and what we reuse from it
-  GAME_CONCEPT_DECISION.md What we decided to build, and the tests that would kill it
+  GAME_CONCEPT_DECISION.md Concept exploration record (its pick was rejected)
   RESOURCES.md             323 licence-verified free Godot resources (generated)
 CLAUDE.md                  Entry point for coding agents working here
 THIRD_PARTY_LICENSES.md    Provenance and license record for everything vendored
