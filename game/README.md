@@ -1,6 +1,15 @@
 # ACCRETE — Milestone 1 vertical slice
 
-Everything you destroy becomes part of your star. Design: `../docs/GAME_DESIGN.md`.
+> **Prior concept, not the current plan.** The team has reset and is choosing a new
+> game. This slice is kept as working reference code — a shipped-quality example of
+> autoloads, procedural SFX, upgrade cards and a wave director — not as the game in
+> progress. Design: `../docs/GAME_DESIGN.md` (also superseded).
+>
+> Platform target for whatever we build next: **desktop PC via Steam**, see
+> `../docs/PLATFORM_TARGETS.md`. The `Web` export preset in `export_presets.cfg`
+> is a leftover from an abandoned HTML5 experiment.
+
+Everything you destroy becomes part of your star.
 
 ## Run it
 

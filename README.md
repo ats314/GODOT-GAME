@@ -4,6 +4,16 @@ A Godot 4 game project, built on a foundation of the best freely licensed
 Godot code available. The repository is structured so the game itself stays
 cleanly separated from the reference code it learns from and borrows from.
 
+## Target platform
+
+**Desktop PC, sold on Steam** — Windows and Linux, and therefore Steam Deck.
+Not web, not mobile, not console. See `docs/PLATFORM_TARGETS.md` for the full
+list and for the engineering decisions that follow from it (renderer choice,
+threading, build size, input, storage).
+
+The `play/` directory and the root `index.html` are leftovers from an
+abandoned HTML5 experiment and do not reflect the target.
+
 ## Repository layout
 
 ```
@@ -20,10 +30,21 @@ third_party/               Vendored snapshots of freely licensed Godot projects
   godot-open-rpg/          GDQuest open RPG (combat, inventory, dialogs)
   Terrain3D/               High-performance 3D terrain addon (GDExtension)
   ShaderV/                 Visual-shader node collection addon
+  godot-class-reference/   Godot 4.7.1 class reference XML (1078 classes) —
+                           the offline, authoritative API source
+  godot-docs/              The Godot 4.7 manual as text (517 pages)
+library/                   The agent-facing resource library
+  api/                     Generated lookup tables over the class reference
+  code/                    Generated symbol tables over everything vendored
+  guides/                  Distilled Godot 4.7 knowledge, written against the
+                           vendored docs and fact-checked against the class XML
+tools/                     Index generators and the catalog validator
 docs/
+  PLATFORM_TARGETS.md      What we ship and on what — read before deciding
   GODOT_CODE_SURVEY.md     Deep-dive survey: what every vendored project
                            teaches and what we reuse from it
   RESOURCES.md             Curated index of useful Godot information online
+CLAUDE.md                  Entry point for coding agents working here
 THIRD_PARTY_LICENSES.md    Provenance and license record for everything vendored
 ```
 
@@ -48,5 +69,8 @@ demo's `project.godot` (e.g. `third_party/godot-demo-projects/2d/dodge_the_creep
 ## Status
 
 - [x] Foundation: vendored free Godot code + license records + deep-dive survey
-- [x] Master game design: **ACCRETE** — see `docs/GAME_DESIGN.md`
-- [ ] Game: build in `game/` (vertical slice → systems → content → ship)
+- [x] Offline Godot 4.7.1 reference + generated indexes + distilled guides
+- [x] Platform target settled: desktop PC / Steam — `docs/PLATFORM_TARGETS.md`
+- [~] **Game concept: being re-chosen.** The previous concept (ACCRETE, in
+  `game/` and `docs/GAME_DESIGN.md`) is prior art, not the current plan
+- [ ] Game: build in `game/` once the concept is chosen

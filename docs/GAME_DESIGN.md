@@ -1,3 +1,11 @@
+> **Superseded — prior art, not the current plan.** The team has reset and is
+> choosing a new game concept. Keep this document for its research (Steam market
+> data, the judging method, the reuse map against the vendored code), but do not
+> treat any of it as a requirement.
+>
+> Note also that the platform target is now stated authoritatively in
+> `docs/PLATFORM_TARGETS.md`: **desktop PC via Steam, not web.**
+
 # Master Game Design — ACCRETE
 
 **The recommendation: build ACCRETE** — an action-incremental arena-defense
