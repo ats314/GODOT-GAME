@@ -72,9 +72,9 @@ if method == "gl_compatibility":
     $WorldEnvironment.environment.glow_enabled = false
 ```
 
-Engine default for `rendering/rendering_device/driver.windows` in the class reference is `"vulkan"`.
-`tutorials/rendering/hdr_output.rst` states that projects *created* in 4.6+ have it set to `d3d12` in their
-`project.godot`; that is a project-template value, not the engine default. HDR output on Windows requires `d3d12`.
+Engine default for `rendering/rendering_device/driver.windows` is `"vulkan"`; `tutorials/rendering/hdr_output.rst`
+notes that projects *created* in 4.6+ set `d3d12` in their `project.godot` — a template value, not the engine
+default. HDR output on Windows requires `d3d12`.
 
 ## 2. `WorldEnvironment`, glow, and tonemapping
 
@@ -104,15 +104,13 @@ Also `set_glow_level(idx, intensity)` / `get_glow_level(idx)`. Blend modes: `GLO
 `glow_blend_mode = 1` (Screen). Set it explicitly.
 
 **Real cost.** Glow is a multi-level downsample/blur/upsample chain over the whole frame. Its price scales with
-output resolution and with the number of non-zero `glow_levels`, not with scene complexity — a fixed per-frame tax
+output resolution and the number of non-zero `glow_levels`, not with scene complexity — a fixed per-frame tax
 exactly where a handheld is weakest. `rendering/environment/glow/upscale_mode` defaults to `1` (bicubic) on desktop,
 `0` (bilinear) via the `.mobile` override; the manual calls bicubic "significant on integrated graphics". If the
-Deck is tight, bilinear plus a single non-zero level is the first lever. No effect under Compatibility, which uses a
-different glow implementation.
-
-Tonemapper enum: `TONE_MAPPER_LINEAR` `0`, `_REINHARDT` `1`, `_FILMIC` `2`, `_ACES` `3`, `_AGX` `4`, with
-`tonemap_exposure`, `tonemap_white`, `tonemap_agx_contrast` (`1.25`), `tonemap_agx_white` (`16.29`). Colour grading
-lives in `adjustment_enabled`, `adjustment_brightness/contrast/saturation`, `adjustment_color_correction`.
+Deck is tight, bilinear plus a single non-zero level is the first lever. No effect under Compatibility. Tonemapper
+enum: `TONE_MAPPER_LINEAR` `0`, `_REINHARDT` `1`, `_FILMIC` `2`, `_ACES` `3`, `_AGX` `4`, with `tonemap_exposure`,
+`tonemap_white`, `tonemap_agx_contrast` (`1.25`), `tonemap_agx_white` (`16.29`); colour grading is
+`adjustment_enabled`, `adjustment_brightness/contrast/saturation`, `adjustment_color_correction`.
 
 ### HDR in 2D
 
@@ -243,9 +241,9 @@ void fragment() {
 - In 3D the copy happens after opaque and before transparent geometry, so transparent objects never appear in it —
   and a material using `hint_screen_texture` is itself transparent, so it never appears in another material's copy.
 
-Full-screen post-processing: `CanvasLayer` → `ColorRect` anchored Full Rect with a `ShaderMaterial`. Works on all
-three renderers. `CompositorEffect` (Forward+/Mobile only) is the lower-level alternative; example at
-`third_party/godot-demo-projects/compute/post_shader`.
+- Full-screen post-processing: `CanvasLayer` → `ColorRect` anchored Full Rect with a `ShaderMaterial`; works on
+  all three renderers. `CompositorEffect` (Forward+/Mobile only) is the lower-level alternative — example at
+  `third_party/godot-demo-projects/compute/post_shader`.
 
 ### `canvas_item` built-ins worth knowing
 
@@ -272,12 +270,11 @@ Fragment outputs: `ALBEDO`, `ALPHA`, `ALPHA_SCISSOR_THRESHOLD`, `ALPHA_HASH_SCAL
 `METALLIC`, `SPECULAR`, `ROUGHNESS`, `EMISSION`, `NORMAL`, `NORMAL_MAP`, `NORMAL_MAP_DEPTH`, `BENT_NORMAL_MAP`,
 `AO`, `AO_LIGHT_AFFECT`, `RIM`, `RIM_TINT`, `CLEARCOAT`, `CLEARCOAT_ROUGHNESS`, `ANISOTROPY`, `ANISOTROPY_FLOW`,
 `BACKLIGHT`, `SSS_STRENGTH`, `SSS_TRANSMITTANCE_*`, `FOG`, `RADIANCE`, `IRRADIANCE`, `PREMUL_ALPHA_FACTOR`, `DEPTH`.
-
-Matrices (renamed from Godot 3 — this is the single most common hallucination): `MODEL_MATRIX`,
-`MODEL_NORMAL_MATRIX`, `VIEW_MATRIX`, `INV_VIEW_MATRIX`, `MAIN_CAM_INV_VIEW_MATRIX`, `PROJECTION_MATRIX`,
-`INV_PROJECTION_MATRIX`, `MODELVIEW_MATRIX`. Godot 3's `WORLD_MATRIX`, `INV_CAMERA_MATRIX` and `CAMERA_MATRIX` do
-not exist. Prefer `MODELVIEW_MATRIX` when objects sit far from the world origin — splitting into `MODEL_MATRIX *
-VIEW_MATRIX` invites float precision loss.
+Matrices — renamed from Godot 3, the single most common hallucination: `MODEL_MATRIX`, `MODEL_NORMAL_MATRIX`,
+`VIEW_MATRIX`, `INV_VIEW_MATRIX`, `MAIN_CAM_INV_VIEW_MATRIX`, `PROJECTION_MATRIX`, `INV_PROJECTION_MATRIX`,
+`MODELVIEW_MATRIX`. Godot 3's `WORLD_MATRIX`, `INV_CAMERA_MATRIX` and `CAMERA_MATRIX` do not exist. Prefer
+`MODELVIEW_MATRIX` far from the world origin — splitting into `MODEL_MATRIX * VIEW_MATRIX` invites float precision
+loss.
 
 ### Godot 3 → 4 shader traps
 
@@ -303,22 +300,14 @@ already fully-lit scene. `Light2D` (base of both lights): `enabled`, `editor_onl
 `PointLight2D` adds `texture`, `texture_scale`, `offset`, `height`; `DirectionalLight2D` adds `height`,
 `max_distance`; `LightOccluder2D` has `occluder`, `occluder_light_mask`, `sdf_collision` (`true`).
 
-Cost order: `SHADOW_FILTER_NONE` ≪ `PCF5` < `PCF13`. PCF13 is for a handful of lights, not a scene full of them.
-Light cost scales with screen area covered, so `texture_scale` is a performance dial.
+Cost order: `SHADOW_FILTER_NONE` ≪ `PCF5` < `PCF13`; PCF13 is for a handful of lights, not a scene full. Light cost
+scales with screen area covered, so `texture_scale` is a performance dial.
 
 **Normal and specular maps in 2D go through `CanvasTexture`**, not separate node properties. Assign a
 `CanvasTexture` to the node's texture slot, then fill `diffuse_texture`, `normal_texture`, `specular_texture`,
 `specular_color`, `specular_shininess`; it also carries its own `texture_filter` / `texture_repeat` overrides. Then
 raise the light's `height` — at `0.0` normal mapping is nearly invisible. In a shader a 3D-authored normal map must
 go to `NORMAL_MAP`, not `NORMAL`; Godot converts it and overwrites `NORMAL`:
-
-**Normal and specular maps in 2D go through `CanvasTexture`**, not separate node properties. Assign a
-`CanvasTexture` to the node's texture slot, then fill `diffuse_texture`, `normal_texture`, `specular_texture`,
-`specular_color`, `specular_shininess`; it also carries its own `texture_filter` / `texture_repeat` overrides. Then
-raise the light's `height` — at the default `0.0` normal mapping is nearly invisible.
-
-In a shader, a 3D-authored normal map must be assigned to `NORMAL_MAP`, not `NORMAL`; Godot converts and overwrites
-`NORMAL` for you:
 
 ```glsl
 NORMAL_MAP = texture(NORMAL_TEXTURE, UV).rgb;
@@ -355,7 +344,7 @@ settings on `Viewport`: `msaa_2d`, `msaa_3d`, `screen_space_aa`, `use_taa`, `use
 `snap_2d_transforms_to_pixel`, `snap_2d_vertices_to_pixel`, `transparent_bg`, `debug_draw`, `sdf_oversize`,
 `sdf_scale`.
 
-Vendored examples: `third_party/godot-demo-projects/viewport/` — `2d_in_3d`, `3d_in_2d`, `3d_scaling`, `gui_in_3d`,
+Vendored examples in `third_party/godot-demo-projects/viewport/`: `2d_in_3d`, `3d_in_2d`, `3d_scaling`, `gui_in_3d`,
 `dynamic_split_screen`, `split_screen_input`, `screen_capture`.
 
 ## 7. Texture filter / repeat, and pixel-art settings
@@ -430,10 +419,9 @@ permanent buffer cost. `Polygon2D` and `TextureProgressBar` have no such paramet
 `_FSR` `1`, `_FSR2` `2`, `_METALFX_SPATIAL` `3`, `_METALFX_TEMPORAL` `4`, `_NEAREST` `5`. This is the lever to
 expose in the Deck options menu: it scales 3D rendering while leaving UI at native resolution. FSR2 supplies its own
 temporal AA and **overrides `use_taa`**; FSR1 wants a separate AA alongside. On weak GPUs the cost of FSR1/FSR2 can
-exceed what bilinear saves. Values above `1.0` on `scaling_3d_scale` are supersampling (SSAA).
-
-**4.7 behaviour change:** `CanvasItem` no longer adds the antialiasing feather when drawing lines (GH-105122). Lines
-that looked correct in 4.6 will render thinner; fix by increasing `width`, not by re-adding the feather.
+exceed what bilinear saves. `scaling_3d_scale` above `1.0` is supersampling (SSAA). **4.7 change:** `CanvasItem` no
+longer adds the antialiasing feather when drawing lines (GH-105122) — lines that looked right in 4.6 render thinner;
+fix by increasing `width`.
 
 ## 10. `RenderingServer` direct draws and `_draw()`
 
@@ -452,7 +440,7 @@ Available: `draw_line`, `draw_dashed_line`, `draw_multiline`, `draw_multiline_co
 ### `RenderingServer` canvas items
 
 For thousands of static sprites, skipping `Node2D` entirely is the documented win
-(`tutorials/performance/using_servers.rst`; see also `library/guides/performance.md` §7).
+(`tutorials/performance/using_servers.rst`; `library/guides/performance.md` §7).
 
 ```gdscript
 extends Node2D
@@ -479,7 +467,6 @@ process lifetime. Other entry points: `canvas_item_set_material`, `canvas_item_s
 `library/code/shaders.tsv` indexes **55** shaders (path, `shader_type`, line count, uniform names) — grep it before
 writing anything. Paths below are relative to `third_party/`.
 
-
 - `…/godot-demo-projects/2d/screen_space_shaders/shaders/` — 11 `canvas_item` screen-space effects: `BCS`, `blur`,
   `contrasted`, `mirage`, `negative`, `normalized`, `old_film`, `pixelize`, `sepia`, `vignette`, `whirl`
 - `…/godot-demo-projects/2d/sprite_shaders/shaders/` — 10 sprite effects: `aura`, `blur`, `dissintegrate`,
@@ -495,19 +482,17 @@ writing anything. Paths below are relative to `third_party/`.
   lines, `minimum` 260, `ocean_shader`)
 
 **ShaderV** (`third_party/ShaderV/addons/shaderV/`) is a VisualShader node pack: **93 `VisualShaderNodeCustom`
-scripts** across `rgba/`, `uv/`, `tools/` — blurs, glows, noises (perlin 2D/3D/4D + fractal variants), shape
+scripts** across `rgba/`, `uv/`, `tools/` — blurs, glows, perlin 2D/3D/4D noise and fractal variants, shape
 generators, chromatic aberration, lens distortion, posterise, pixelate, gradient mapping, emboss, colour-space
-helpers. Examples in `third_party/ShaderV/addons/shaderV/examples/basic_examples.tscn`. Its `project.godot` declares
-feature level **4.2**, not 4.7 — the custom-node API is unchanged as far as the class reference shows, but nothing
-in this repo proves it loads clean in 4.7. Test before depending on it.
+helpers; examples in `.../shaderV/examples/basic_examples.tscn`. Its `project.godot` declares feature level **4.2**,
+not 4.7, and nothing here proves it loads clean in 4.7 — test before depending on it.
 
 ## 12. Shader/pipeline compilation stutter (Steam-facing)
 
 Since 4.4, Forward+ and Mobile use **ubershaders + pipeline precompilation**: one general pipeline is compiled at
-load time via specialisation constants, optimised variants compile on background threads during play. Compatibility
-has neither and needs the old "display everything for one frame during loading" workaround. Precompilation only
-covers what the `RenderingServer` has *seen* by load time — loading a mesh or shader mid-game, toggling MSAA, or
-instancing a `VoxelGI` at runtime forces new compilations, i.e. a first-playthrough hitch on the player's machine
+load time via specialisation constants, optimised variants compile on background threads during play. Precompilation
+only covers what the `RenderingServer` has *seen* by load time — loading a mesh or shader mid-game, toggling MSAA,
+or instancing a `VoxelGI` at runtime forces new compilations, i.e. a first-playthrough hitch on the player's machine
 that you will not feel with a warm driver cache. Watch the debugger's pipeline-compilation monitors.
 `tutorials/performance/pipeline_compilations.rst`; `library/guides/performance.md` §19.
 
@@ -516,11 +501,11 @@ that you will not feel with a warm driver cache. Watch the debugger's pipeline-c
 - **Steam Deck specifics.** No vendored Godot doc mentions the Deck, its GPU, or a 15 W envelope. The §1
   recommendation applies documented renderer cost characteristics to a handheld, plus `docs/PLATFORM_TARGETS.md`.
   Engineering judgement, not a cited fact — settle it by profiling.
-- **Absolute cost figures.** No ms/frame numbers exist in the manual for glow, PCF13, MSAA levels, FSR1 vs FSR2, or
+- **Absolute cost figures.** The manual gives no ms/frame numbers for glow, PCF13, MSAA levels, FSR1 vs FSR2, or
   MSDF vs rasterised fonts. Every cost claim here is directional.
-- **Feature introduction versions.** Verified: HDR 2D 4.2, FSR2 4.2, reverse Z 4.3, ubershaders + pipeline
-  precompilation + renderer fallback chain 4.4. Not dated by the vendored docs: SMAA, `hint_enum`, `instance_index`,
-  `DrawableTexture2D`/`texture_blit`, `draw_ellipse`/`draw_ellipse_arc`, `CanvasItem.set_instance_shader_parameter`
-  — all exist in 4.7.1.
+- **Feature introduction versions.** Verified: HDR 2D 4.2, FSR2 4.2, reverse Z 4.3, ubershaders + precompilation +
+  renderer fallback chain 4.4. Not dated by the vendored docs: SMAA, `hint_enum`, `instance_index`,
+  `DrawableTexture2D`/`texture_blit`, `draw_ellipse`/`draw_ellipse_arc`,
+  `CanvasItem.set_instance_shader_parameter` — all exist in 4.7.1.
 - **`Environment.glow_blend_mode` default.** Class reference `1` (Screen) vs manual (Softlight).
 - **ShaderV under 4.7.** Declares feature level 4.2; not run here.

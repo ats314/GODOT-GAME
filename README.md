@@ -11,9 +11,9 @@ Not web, not mobile, not console. See `docs/PLATFORM_TARGETS.md` for the full
 list and for the engineering decisions that follow from it (renderer choice,
 threading, build size, input, storage).
 
-There is no game project here yet. A previous concept and its HTML5 build
-were deleted when the team reset; what remains is the reference library that
-the next game will be built from.
+The game to build has been chosen — **DRAGLINE**, a physics hauling roguelite
+(`docs/GAME_CONCEPT_DECISION.md`). The project itself is not scaffolded yet; what
+is here is the reference library it will be built from.
 
 ## Repository layout
 
@@ -47,7 +47,8 @@ docs/
   TESTING.md               Headless validation, measured rather than assumed
   GODOT_CODE_SURVEY.md     Deep-dive survey: what every vendored project
                            teaches and what we reuse from it
-  RESOURCES.md             Curated index of useful Godot information online
+  GAME_CONCEPT_DECISION.md What we decided to build, and the tests that would kill it
+  RESOURCES.md             323 licence-verified free Godot resources (generated)
 CLAUDE.md                  Entry point for coding agents working here
 THIRD_PARTY_LICENSES.md    Provenance and license record for everything vendored
 ```
@@ -76,5 +77,5 @@ demo's `project.godot` (e.g. `third_party/godot-demo-projects/2d/dodge_the_creep
 - [x] Offline Godot 4.7.1 reference + generated indexes + distilled guides
 - [x] Platform target settled: desktop PC / Steam — `docs/PLATFORM_TARGETS.md`
 - [x] Previous concept and its web build removed; repository is a clean library
-- [ ] **Choose the game concept**
+- [x] **Game concept chosen: DRAGLINE** — `docs/GAME_CONCEPT_DECISION.md`
 - [ ] Scaffold the project and add a headless import/boot job to CI

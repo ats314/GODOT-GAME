@@ -10,14 +10,16 @@ are the targets. **Not a web/HTML5 game. Not mobile. Not console.** The full tar
 list and the engineering consequences are in `docs/PLATFORM_TARGETS.md` — read it
 before making any decision about renderers, threading, build size, input or storage.
 
-**There is no game project in this repository yet, deliberately.** A previous concept
-(ACCRETE, a 2D neon incremental) and its HTML5 build were deleted, not archived —
+**No game project is scaffolded yet.** A previous concept (ACCRETE, a 2D neon
+incremental) and its HTML5 build were deleted, not archived —
 if you find a reference to `game/`, `play/`, `index.html`, `docs/GAME_DESIGN.md` or
 "ACCRETE" anywhere, it is a stale reference and should be fixed, not followed. (The
 files remain in git history if anything ever needs recovering.)
 
-What this repository currently *is*: a vendored, indexed reference library for
-building a Godot 4.7 game, waiting on a concept to be chosen.
+**The chosen concept is DRAGLINE** — a physics hauling roguelite where each delivery
+bolts another jointed trailer onto your rig. See `docs/GAME_CONCEPT_DECISION.md` for the
+design, the kill criteria and the first two weeks. It was picked by a six-concept,
+three-judge panel; the losing concepts and the reasoning are recorded there too.
 
 ## Engine version
 
@@ -56,7 +58,7 @@ library/         The agent-facing resource library
   code/          Generated symbol tables over everything in third_party/
   guides/        Distilled Godot 4.7 knowledge, written against the vendored docs
 third_party/     Vendored upstream code and references, licences intact
-docs/            Project documents: platform targets, design, balance, code survey
+docs/            Platform targets, the concept decision, the code survey, resources
 tools/           Index generators and validators
 ```
 
@@ -70,7 +72,10 @@ cut -f1,2 library/code/addons.tsv                  # addons already available
 grep -i 'shader' library/code/shaders.tsv          # 55 vendored shaders
 ```
 
-`docs/GODOT_CODE_SURVEY.md` describes what each vendored project teaches.
+`docs/GODOT_CODE_SURVEY.md` describes what each vendored project teaches, and
+`docs/RESOURCES.md` catalogues 323 further free resources whose licences were verified
+by fetching the actual licence file — check it before writing a subsystem from scratch.
+`library/resources.json` is the machine-readable form.
 
 Regenerate the tables after vendoring anything new:
 
