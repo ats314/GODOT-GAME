@@ -250,10 +250,10 @@ func _do_ceiling_drop(cheat: Dictionary) -> void:
 				pass
 	# Simpler approach: push the player down when near x positions
 	for x_pos in cheat.x_positions:
-		var dist_x := absf(_player.global_position.x - x_pos)
-		if dist_x < cheat.range:
-			var crush_factor := 1.0 - (dist_x / cheat.range)
-			_player.extra_velocity.y = cheat.amount * crush_factor * 10.0
+		var dist_x: float = absf(_player.global_position.x - float(x_pos))
+		if dist_x < float(cheat.range):
+			var crush_factor: float = 1.0 - (dist_x / float(cheat.range))
+			_player.extra_velocity.y = float(cheat.amount) * crush_factor * 10.0
 			GameState.log_cheat("Ceiling pushes you down")
 			return
 	# Reset if not near any

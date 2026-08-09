@@ -56,8 +56,8 @@ func _build_ui() -> void:
 	start_btn.add_theme_font_size_override("font_size", 24)
 	start_btn.custom_minimum_size = Vector2(240, 50)
 	start_btn.pressed.connect(_on_start)
-	start_btn.grab_focus()
 	vbox.add_child(start_btn)
+	start_btn.call_deferred("grab_focus")
 
 	var quit_btn := Button.new()
 	quit_btn.text = "QUIT"

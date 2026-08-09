@@ -400,8 +400,8 @@ func _draw_goal() -> void:
 
 func _draw_death_particles() -> void:
 	for p in _death_particles:
-		var alpha := p.life / p.max_life
-		draw_circle(p.pos, p.size * alpha, Color(p.color, alpha))
+		var alpha: float = float(p.life) / float(p.max_life)
+		draw_circle(p.pos, float(p.size) * alpha, Color(p.color, alpha))
 
 func _generate_stars() -> void:
 	var rng := RandomNumberGenerator.new()
