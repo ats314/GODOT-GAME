@@ -123,14 +123,14 @@ func _build_shell() -> void:
 
 	# ceiling light strip — the emissive that carries the interior at night.
 	# Unique per car: the cached materials are shared, and these flicker apart.
-	var strip_mat := _mat("strip", Color(0.9, 0.75, 0.5), 0.4, Color(1.0, 0.78, 0.45), 1.6).duplicate()
+	var strip_mat := _mat("strip", Color(0.9, 0.75, 0.5), 0.4, Color(1.0, 0.78, 0.45), 0.8).duplicate()
 	_strip = _box(Vector3(0, HEIGHT - 0.06, -LENGTH * 0.5), Vector3(0.5, 0.06, LENGTH - 1.0), strip_mat)
 
 	_lamp = OmniLight3D.new()
 	_lamp.position = Vector3(0, HEIGHT - 0.35, -LENGTH * 0.5)
 	_lamp.light_color = Color(1.0, 0.82, 0.6)
-	_lamp.light_energy = 1.4
-	_lamp.omni_range = 11.0
+	_lamp.light_energy = 1.05
+	_lamp.omni_range = 9.0
 	_lamp.shadow_enabled = false
 	add_child(_lamp)
 
@@ -206,8 +206,8 @@ func _build_props() -> void:
 			# generator block: the thing whose death ends the run
 			_box(Vector3(HALF_W - 0.7, 0.9, -LENGTH * 0.5), Vector3(1.1, 1.8, 4.5),
 					_mat("gen", Color(0.32, 0.30, 0.26), 0.5))
-			_box(Vector3(HALF_W - 0.7, 1.9, -LENGTH * 0.5), Vector3(1.15, 0.12, 4.5),
-					_mat("genglow", Color(0.9, 0.5, 0.2), 0.4, Color(1.0, 0.45, 0.15), 2.2))
+			_box(Vector3(HALF_W - 0.7, 1.9, -LENGTH * 0.5), Vector3(1.16, 0.08, 3.0),
+					_mat("genglow", Color(0.9, 0.5, 0.2), 0.4, Color(1.0, 0.45, 0.15), 0.6))
 		Kind.TANKER:
 			var tank := MeshInstance3D.new()
 			var cyl := CylinderMesh.new()
@@ -314,7 +314,7 @@ func set_power(power: float, time: float) -> void:
 	var flicker := 1.0
 	if power < 0.55:
 		flicker = 0.55 + 0.45 * absf(sin(time * (9.0 + float(index)) * (1.2 - power)))
-	_lamp.light_energy = maxf(0.06, 1.5 * power * flicker)
+	_lamp.light_energy = maxf(0.05, 1.05 * power * flicker)
 	var strip_mat := _strip.material_override as StandardMaterial3D
 	if strip_mat != null:
-		strip_mat.emission_energy_multiplier = maxf(0.05, 1.8 * power * flicker)
+		strip_mat.emission_energy_multiplier = maxf(0.04, 0.9 * power * flicker)
