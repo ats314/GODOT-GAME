@@ -80,6 +80,37 @@ python3 tools/build_code_index.py
 python3 tools/build_resource_index.py     # --check to validate only
 ```
 
+## Verify your work — the container can check most of it
+
+This repository is set up so claims can be checked rather than asserted. A cloud
+container with no GPU can still import a project, boot it, render real frames through a
+software rasterizer, and lint. `docs/CODESPACES.md` has the full picture; the short form:
+
+```bash
+tools/setup_environment.sh --verify        # what can this machine do?
+tools/godot_smoke_test.sh <project> <scene>              # import + headless boot
+tools/godot_smoke_test.sh <project> <scene> --render     # + render a frame, screenshot
+gdlint path/to/file.gd                                   # style check
+python3 tools/build_api_index.py && python3 tools/build_code_index.py
+```
+
+Before reporting that a change works: boot it, lint what you touched, and if the change
+is visual, render it and actually look at the screenshot.
+
+What the container **cannot** tell you: performance (software rasterization is orders of
+magnitude off — profile on a Steam Deck), driver behaviour, audio output, or game feel.
+When you could not check something, say so plainly instead of implying it was verified.
+
+## Owner requirements
+
+- **Controller-first.** The project owner plays on a controller, and Steam Deck is a
+  target machine. Every interaction must work without a mouse — full menu and UI focus
+  navigation, no mouse-only affordances, no precision-pointer-dependent mechanics.
+- **Accessibility is a requirement, not polish.** Remappable inputs, no meaning conveyed
+  by colour alone, legible text at 1280x800, and reduced-motion options.
+- **No dedicated artist.** Art direction has to be achievable with engine primitives,
+  shaders, procedural generation or CC0 assets.
+
 ## Licensing rules — these are hard
 
 - **Allowed code**: MIT, Apache-2.0, BSD, ISC, zlib, Unlicense, CC0, MPL-2.0 (flag it).

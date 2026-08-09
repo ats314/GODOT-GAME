@@ -38,9 +38,13 @@ library/                   The agent-facing resource library
   code/                    Generated symbol tables over everything vendored
   guides/                  Distilled Godot 4.7 knowledge, written against the
                            vendored docs and fact-checked against the class XML
-tools/                     Index generators and the catalog validator
+tools/                     Index generators, environment setup, Godot smoke test
+.devcontainer/             Codespaces: a container that can build, run and render
+.claude/                   SessionStart hook so web sessions get the same toolchain
 docs/
   PLATFORM_TARGETS.md      What we ship and on what — read before deciding
+  CODESPACES.md            Working in a cloud container: what it can and cannot prove
+  TESTING.md               Headless validation, measured rather than assumed
   GODOT_CODE_SURVEY.md     Deep-dive survey: what every vendored project
                            teaches and what we reuse from it
   RESOURCES.md             Curated index of useful Godot information online
