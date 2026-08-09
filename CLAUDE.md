@@ -10,13 +10,14 @@ are the targets. **Not a web/HTML5 game. Not mobile. Not console.** The full tar
 list and the engineering consequences are in `docs/PLATFORM_TARGETS.md` — read it
 before making any decision about renderers, threading, build size, input or storage.
 
-If you find a Web export preset, a `play/` directory or an `index.html` redirect in
-this tree, those are leftovers from an abandoned experiment, not a statement of intent.
+**There is no game project in this repository yet, deliberately.** A previous concept
+(ACCRETE, a 2D neon incremental) and its HTML5 build were deleted, not archived —
+if you find a reference to `game/`, `play/`, `index.html`, `docs/GAME_DESIGN.md` or
+"ACCRETE" anywhere, it is a stale reference and should be fixed, not followed. (The
+files remain in git history if anything ever needs recovering.)
 
-**The game concept is currently being re-chosen.** `game/` and `docs/GAME_DESIGN.md`
-hold a previous concept (ACCRETE, a 2D neon incremental) that is no longer the plan.
-Treat them as reference and prior art, not as requirements. Do not extend that game
-unless explicitly asked.
+What this repository currently *is*: a vendored, indexed reference library for
+building a Godot 4.7 game, waiting on a concept to be chosen.
 
 ## Engine version
 
@@ -50,7 +51,6 @@ the APIs models reliably get wrong (`Spatial`, `KinematicBody`, `instance()`,
 ## Repository layout
 
 ```
-game/            The game project (currently a prior concept — see above)
 library/         The agent-facing resource library
   api/           Generated lookup tables over the class reference (grep these)
   code/          Generated symbol tables over everything in third_party/
@@ -96,8 +96,9 @@ python3 tools/build_resource_index.py     # --check to validate only
 - GDScript follows the official style guide; static typing everywhere it is possible.
   See `library/guides/gdscript-style-and-typing.md`.
 - `.gd.uid` sidecar files are engine-managed. Do not hand-edit or delete them.
-- CI (`.github/workflows/godot-ci.yml`) imports the project headlessly and boots its
-  scenes on every push to `game/**`, failing on any script error. Keep it green.
+- CI (`.github/workflows/godot-ci.yml`) regenerates the indexes and fails if the
+  committed ones are stale. Re-run the generators and commit their output whenever you
+  vendor something. When a game project lands, add a headless import/boot job to it.
 - Controller parity and accessibility are project requirements, not polish. Steam Deck
   is a target machine.
 

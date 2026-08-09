@@ -14,12 +14,12 @@
 
 ## Why this is written down
 
-The repository previously contained a Web-only `export_presets.cfg`, a published
-HTML5 build under `play/`, and a root `index.html` redirecting to it — while stating
-its actual platform target in no document at all. Anyone (human or agent) reading the
-repository would reasonably conclude it was a browser game. This file is the
-authoritative answer so that never happens again. If a decision here changes, change
-it *here* first.
+The repository used to contain a Web-only `export_presets.cfg`, a published HTML5
+build under `play/`, and a root `index.html` redirecting to it — while stating its
+actual platform target in no document at all. Anyone reading it, human or agent, would
+reasonably conclude it was a browser game. All of that has since been deleted along
+with the abandoned concept it belonged to, and this file is the authoritative answer
+so the confusion cannot recur. If a decision here changes, change it *here* first.
 
 ## What this means for engineering decisions
 
@@ -49,11 +49,12 @@ the web assumption would have pushed us the wrong way.
   presence, and the Steam overlay. This is a native-only surface; it does not exist
   in a browser build.
 
-## Consequences still outstanding
+## When the new project is scaffolded
 
-- `game/export_presets.cfg` contains a single `Web` preset and no desktop preset.
-  Whichever project we take forward needs Windows and Linux presets created in the
-  editor (export templates must be installed to do this properly).
-- `play/` (39 MB) and the root `index.html` redirect are artefacts of the abandoned
-  web build. They should be removed once we confirm nothing is linking to the
-  published page.
+- Create **Windows Desktop** and **Linux** export presets in the editor. Export
+  templates must be installed for the presets to generate correctly, so this cannot
+  be hand-written into `export_presets.cfg` reliably. Do not add a Web preset.
+- Set the renderer deliberately in `project.godot` rather than accepting the default,
+  and record why in the project's README.
+- Add a headless import/boot job to `.github/workflows/godot-ci.yml` that fails on
+  script errors — the pattern is documented in that file's header comment.

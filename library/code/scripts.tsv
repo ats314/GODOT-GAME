@@ -1407,17 +1407,3 @@ third_party/phantom-camera/addons/phantom_camera/scripts/resources/tween_directo
 third_party/phantom-camera/addons/phantom_camera/scripts/resources/tween_resource.gd	PhantomCameraTween	Resource	41		
 third_party/phantom-camera/dev_scenes/2d/scripts/dev_scene_2d.gd		Node2D	36		_ready,_input,_teleport_left,_teleport_right
 third_party/phantom-camera/dev_scenes/3d/scripts/dev_scene_3d.gd		Node3D	13		_input
-game/scripts/core.gd	Core	Node2D	149		_ready,ring_radius,_process,_update_beam,take_hit,heal_full_segment,_on_level_up,_soft_circle,_draw
-game/scripts/enemy.gd	Enemy	Node2D	112		make,_ready,_process,take_damage,_die,_draw
-game/scripts/events.gd		Node	12	mass_changed,ring_level_up,upgrade_options,upgrade_chosen,enemy_killed,core_damaged,core_healed,wave_started,run_over	
-game/scripts/game_over.gd		CanvasLayer	66		_ready,show_stats,_input,_restart
-game/scripts/game_state.gd		Node	99		_ready,reset_run,next_level_cost,add_mass,apply_upgrade,finish_run,load_persistent,save_persistent,fmt
-game/scripts/hud.gd		CanvasLayer	101		_ready,_label,_refresh,_refresh_hp,_on_wave
-game/scripts/main_menu.gd		Control	102		_ready,_process,_draw_stars,_draw_preview
-game/scripts/run.gd		Node2D	247		_ready,_gameplay,_build_world,_make_nebula,_make_starfield,_build_ui,_make_pause_overlay,_process,_on_enemy_killed,_hit_stop,_on_core_damaged,_on_level_up,_show_next_cards,_on_upgrade_chosen,_sync_turrets,_game_over,_restart
-game/scripts/sfx.gd		Node	95		_ready,play,play_pickup,_render,_env,_gen_zap,_gen_pop,_gen_pickup,_gen_hurt,_gen_ui,_gen_levelup
-game/scripts/shard_field.gd	ShardField	Node2D	68		spawn_burst,count,_process,_draw
-game/scripts/spawner.gd	Spawner	Node	48		_process,_spawn_distance,_batch,_surge,_spawn_at
-game/scripts/turret.gd	Turret	Node2D	54		_process,_nearest_enemy,_draw
-game/scripts/upgrade_overlay.gd		CanvasLayer	62		_ready,show_options,_make_card
-game/scripts/vfx.gd		Node	48		_ready,_on_enemy_killed,_on_core_damaged,_on_ring_level_up,_burst

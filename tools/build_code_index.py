@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-SOURCES = ("third_party", "game")
+SOURCES = ("third_party",)
 OUT_DIR = REPO / "library" / "code"
 
 RE_CLASS_NAME = re.compile(r"^\s*class_name\s+([A-Za-z_][A-Za-z0-9_]*)", re.M)

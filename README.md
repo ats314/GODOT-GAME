@@ -11,13 +11,13 @@ Not web, not mobile, not console. See `docs/PLATFORM_TARGETS.md` for the full
 list and for the engineering decisions that follow from it (renderer choice,
 threading, build size, input, storage).
 
-The `play/` directory and the root `index.html` are leftovers from an
-abandoned HTML5 experiment and do not reflect the target.
+There is no game project here yet. A previous concept and its HTML5 build
+were deleted when the team reset; what remains is the reference library that
+the next game will be built from.
 
 ## Repository layout
 
 ```
-game/                      The game (to be built) — our own MIT-licensed code
 third_party/               Vendored snapshots of freely licensed Godot projects
   godot-demo-projects/     Official Godot demos (MIT) — ~120 projects: 2D, 3D,
                            GUI, audio, networking, shaders, saving, and more
@@ -71,6 +71,6 @@ demo's `project.godot` (e.g. `third_party/godot-demo-projects/2d/dodge_the_creep
 - [x] Foundation: vendored free Godot code + license records + deep-dive survey
 - [x] Offline Godot 4.7.1 reference + generated indexes + distilled guides
 - [x] Platform target settled: desktop PC / Steam — `docs/PLATFORM_TARGETS.md`
-- [~] **Game concept: being re-chosen.** The previous concept (ACCRETE, in
-  `game/` and `docs/GAME_DESIGN.md`) is prior art, not the current plan
-- [ ] Game: build in `game/` once the concept is chosen
+- [x] Previous concept and its web build removed; repository is a clean library
+- [ ] **Choose the game concept**
+- [ ] Scaffold the project and add a headless import/boot job to CI

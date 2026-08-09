@@ -146,4 +146,3 @@ third_party/godot-demo-projects/xr/openxr_render_models	OpenXR Render Models	4.7
 third_party/godot-demo-projects/xr/openxr_spectator_view	Openxr Spectator View Demo	4.7, Mobile		
 third_party/godot-demo-projects/xr/webxr	WebXR demo	4.7, GL Compatibility		
 third_party/godot-open-rpg	OpenRPG	4.6, GL Compatibility	Camera,CombatEvents,FieldEvents,Gameboard,GamepieceRegistry,Music,Player,Transition,Dialogic	
-game	ACCRETE	4.7	Events,GameState,Sfx,Vfx	Everything you destroy becomes part of your star.

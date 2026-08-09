@@ -188,22 +188,21 @@ prevents you from instantiating copies of an autoloaded node." Access is by the 
 > **Hard rule from the manual:** "Autoloads must **not** be removed using `free()` or
 > `queue_free()` at runtime, or the engine will crash."
 
-`autoloads_versus_regular_nodes.rst` gives the three failure modes of the "manager singleton"
-habit — global **state** (one object owns everyone's data), global **access** (a bug's search
-domain becomes the whole project), global **resource allocation** (a fixed pool is either too
-small or wasteful). Its verdict on when an autoload is right:
+`autoloads_versus_regular_nodes.rst` names three failure modes of the "manager singleton" habit —
+global **state** (one object owns everyone's data), global **access** (a bug's search domain
+becomes the whole project), global **resource allocation** (a fixed pool is too small or
+wasteful) — and gives the one condition under which an autoload is right: "If the autoload is
+managing its own information and not invading the data of other objects, then it's a great way to
+create systems that handle broad-scoped tasks."
 
-> "If the autoload is managing its own information and not invading the data of other objects,
-> then it's a great way to create systems that handle broad-scoped tasks."
-
-Alternatives to reach for first: a `class_name` node type for shared *behaviour*; a custom
-`Resource` for shared *data*; `static func` / `static var` (static variables added in **4.1**)
-for stateless helpers; the `owner` property to reach a scene root without a global.
+Reach for these first: a `class_name` node type for shared *behaviour*; a custom `Resource` for
+shared *data*; `static func` / `static var` (static variables added in **4.1**) for stateless
+helpers; the `owner` property to reach a scene root without a global.
 
 ### 6.1 Worked example — this repo's four autoloads
 
-`game/project.godot` registers `Events`, `GameState`, `Sfx`, `Vfx`. Read them at
-`game/scripts/`. They are a useful spread of good and bad.
+`game/project.godot` registers `Events`, `GameState`, `Sfx`, `Vfx` (`game/scripts/`) — a useful
+spread of good and bad.
 
 | Autoload | File | Verdict |
 | --- | --- | --- |
@@ -212,28 +211,25 @@ for stateless helpers; the `owner` property to reach a scene root without a glob
 | `Sfx` | `sfx.gd` (95 lines) | **Textbook of the manual's own cutting-audio example — accepted deliberately.** It is exactly the `Sound.play("…")` pool the manual warns about, including the fixed `POOL := 10`: request 11 overlapping sounds and the 11th is silently dropped (`play()` returns after the loop finds no free player). Justified here because SFX are procedurally synthesized once at startup and every caller wants the same six sounds. If sounds become per-scene assets, move `AudioStreamPlayer` nodes into the scenes that own them. |
 | `GameState` | `game_state.gd` (99 lines) | **The one to watch.** It holds run economy *and* upgrade modifiers *and* persistent records *and* the save file *and* a static string formatter. Eight of the fourteen scripts read `GameState.mods.*` directly — `core.gd`, `turret.gd`, `enemy.gd`, `hud.gd`, `run.gd`, `spawner.gd`, `main_menu.gd`, `game_over.gd`. |
 
-The `GameState` failure mode is concrete and worth internalising, because it is what "month
-three" looks like:
+The `GameState` failure mode is what "month three" looks like:
 
 - `mods` is an untyped `Dictionary` built from `DEFAULT_MODS.duplicate()` (`game_state.gd:44`).
   `GameState.mods.beam_widht` is a runtime `nil`, not a parse error. A typed custom `Resource`
-  (§7) would have failed at parse time.
-- Balance data lives in GDScript constants, so no one can tune it without editing code and
-  nobody can ship two difficulty presets.
-- Because every system reads the global, none of them can be exercised without booting the
-  whole autoload set. `Turret` cannot be unit-tested with a fake stat block.
-- `duplicate()` on `DEFAULT_MODS` is a **shallow** copy. It happens to be safe because every
-  value is a `float`/`int`; add one nested `Dictionary` or `Array` and every run mutates the
-  shared default.
+  (§11) would have failed at parse time.
+- Balance data lives in GDScript constants: nobody can tune it without editing code, and you
+  cannot ship two difficulty presets.
+- Every system reads the global, so none can be exercised without booting the whole autoload set.
+  `Turret` cannot be tested against a fake stat block.
+- `DEFAULT_MODS.duplicate()` is a **shallow** copy — safe only because every value is a
+  `float`/`int`. Add one nested `Dictionary`/`Array` and every run mutates the shared default.
 
-The refactor, when this project grows: `GameState` keeps run lifecycle and emits through
-`Events`; `mods` becomes an `@export`ed `RunModifiers` resource injected into `Run`; saving
-moves to a `SaveData` resource (§9).
+The refactor when this grows: `GameState` keeps run lifecycle and emits through `Events`; `mods`
+becomes an `@export`ed `RunModifiers` resource injected into `Run`; saving moves to a `SaveData`
+resource (§13).
 
-**Autoload budget.** A useful rule of thumb, not from the manual: if an autoload has *callers*
-rather than *listeners*, every new caller widens the blast radius. Autoloads with only listeners
-(`Events`, `Vfx`) scale; autoloads with many callers (`GameState`) become the file everyone
-edits and nobody understands.
+**Autoload budget** (rule of thumb, not from the manual): an autoload with *listeners* scales
+(`Events`, `Vfx`); an autoload with many *callers* (`GameState`) becomes the file everyone edits
+and nobody understands. Every new caller widens the blast radius.
 
 ## 7. Event-bus autoload versus direct signal wiring
 
@@ -255,19 +251,18 @@ copy that, or the parser warns about signals never emitted from within the bus s
 
 Rules that keep a bus from rotting:
 
-- Bus signals describe **facts that happened**, past tense, never commands. `enemy_killed`, not
+- Bus signals describe **facts that happened**, past tense, never commands: `enemy_killed`, not
   `kill_enemy`.
-- The bus must contain no state and no methods. `events.gd` in this repo is correct: 12 lines,
-  all signals.
-- If both parties are in the same scene, wire them directly. Routing a parent↔child message
-  through a global is how you lose the ability to reason about a scene in isolation.
-- Beware ordering: multiple listeners on one bus signal fire in connection order, which depends
-  on autoload order and scene construction order. If order matters, you have a design problem —
-  make one listener the coordinator.
+- The bus holds no state and no methods. `events.gd` here is correct: 12 lines, all signals.
+- If both parties live in the same scene, wire them directly. Routing a parent↔child message
+  through a global loses your ability to reason about that scene in isolation.
+- Multiple listeners fire in connection order, which depends on autoload order and scene
+  construction order. If order matters you have a design problem — make one listener the
+  coordinator.
 
 `game/scripts/run.gd:190-193` connects four `Events` signals and is also the node that *causes*
-most of them, which is a mild smell — a coordinator both emitting into and listening to a global
-bus is round-tripping messages it could have handled directly.
+most of them — a mild smell: a coordinator both emitting into and listening to a global bus is
+round-tripping messages it could have handled directly.
 
 ## 8. Node paths, `%` unique names, and `get_node` fragility
 
@@ -294,9 +289,8 @@ prefix the name with `%` while renaming). Two limits from `Node.xml` and `scene_
 2. If two nodes with the same `owner` share a name, "the other node will no longer be accessible
    as unique."
 
-Unique names *can* appear mid-path: `get_node("%Sword/%Hilt")` is valid.
-
-Cache lookups in `@onready` or `_ready()`; never resolve a path in `_process`.
+Unique names *can* appear mid-path: `get_node("%Sword/%Hilt")` is valid. Cache every lookup in
+`@onready` or `_ready()`; never resolve a path in `_process`.
 
 ## 9. `class_name`, and when to register
 
@@ -311,13 +305,12 @@ script (`scenes_versus_scripts.rst`). Register when:
   name."
 - It is used as a type annotation or in an `is` check.
 
-Do **not** register one-off scripts attached to a single scene root; you are polluting a global
-namespace with `Hud`, `Menu`, `Level`. `scenes_versus_scripts.rst` closes with the alternative —
-a `class_name` on a `RefCounted` acting as a namespace holding `const MyScene = preload(...)`.
+Do **not** register one-off scripts attached to a single scene root; that pollutes a global
+namespace with `Hud`, `Menu`, `Level`. `scenes_versus_scripts.rst` closes with the alternative: a
+`class_name` on a `RefCounted` acting as a namespace holding `const MyScene = preload(...)`.
 
-Two gotchas: `@icon("res://…svg")` above `class_name` sets the dialog/dock icon; and the editor
-**hides** `class_name` types beginning with `Editor` from creation dialogs (they still work at
-runtime).
+`@icon("res://…svg")` above `class_name` sets the dialog/dock icon. The editor **hides**
+`class_name` types beginning with `Editor` from creation dialogs; they still work at runtime.
 
 ## 10. Scene instancing and scene inheritance
 
@@ -333,18 +326,15 @@ a node before adding it to the scene tree. Some properties' setters have code to
 corresponding values, and that code can be slow." The exception is anything global-transform
 based, which needs a parent first.
 
-`preload` vs `load`: `preload` is compile-time and requires a constant path, so it front-loads
-the cost and gives you autocompletion; `load` is a runtime alias for `ResourceLoader.load()`.
-`logic_preferences.rst` warns against `@export var scn: PackedScene = preload(...)` — the scene
-instantiation overwrites the preloaded default anyway, "It's usually better to provide `null`,
-empty, or otherwise invalid default values for exports."
-
-Loading a resource returns the **cached** instance. To get an independent copy you must
+`preload` is compile-time and needs a constant path, so it front-loads the cost and gives
+autocompletion; `load` is a runtime alias for `ResourceLoader.load()`. `logic_preferences.rst`
+warns against `@export var scn: PackedScene = preload(...)` — scene instantiation overwrites the
+preloaded default anyway: "It's usually better to provide `null`, empty, or otherwise invalid
+default values for exports." Loading returns the **cached** instance; for an independent copy
 `duplicate()` it or `new()` one (`godot_interfaces.rst`).
 
 **Scene inheritance.** The vendored 4.7 manual has no dedicated page on inherited scenes — I
-could not find one, and I am not going to invent its guidance. What the class reference does
-confirm:
+could not find one, and will not invent its guidance. What the class reference does confirm:
 
 - `PackedScene.instantiate(edit_state)` takes `GEN_EDIT_STATE_DISABLED` (default, runtime),
   `GEN_EDIT_STATE_INSTANCE`, `GEN_EDIT_STATE_MAIN`, `GEN_EDIT_STATE_MAIN_INHERITED`.
@@ -356,43 +346,41 @@ confirm:
   reference a sub-scene without loading it until `InstancePlaceholder.create_instance()` is
   called. Useful for large optional content.
 
-Practical guidance (mine, flagged as such): inherited scenes give you one editable base with
-per-variant overrides, which is genuinely good for UI panels and enemy variants. They are also
-the single most fragile refactoring surface in Godot — renaming or reparenting a node in the
-base silently drops the override in every derived scene. Prefer a data-driven variant
-(one scene + a `Resource` per variant, §11) whenever the variants differ only in *values*.
-Reserve scene inheritance for variants that differ in *structure*.
+Practical guidance (mine): inherited scenes give one editable base with per-variant overrides,
+which is good for UI panels and enemy variants — and they are also the most fragile refactoring
+surface in Godot, because renaming or reparenting a node in the base silently drops the override
+in every derived scene. Prefer one scene plus a `Resource` per variant (§11) when variants differ
+only in *values*; reserve scene inheritance for variants that differ in *structure*.
 
 ## 11. Custom `Resource` as the data container (data-driven design)
 
-This is the highest-leverage pattern in the engine and the one models under-use. From
+The highest-leverage pattern in the engine and the one models under-use. From
 `scripting/resources.rst`, a custom `Resource` beats JSON/CSV/`Dictionary` because it can define
-constants, methods, setters, and **signals**; its properties are guaranteed to exist; it
-serializes and deserializes for free; sub-resources nest recursively; `.tres` is
-version-control-friendly text; and the Inspector edits it with zero extra code. The manual's own
-comparison: "Resource scripts are similar to Unity's ScriptableObjects."
+constants, methods, setters and **signals**; its properties are guaranteed to exist; it
+serializes for free; sub-resources nest recursively; `.tres` is version-control-friendly text;
+and the Inspector edits it with zero extra code. The manual's own comparison: "Resource scripts
+are similar to Unity's ScriptableObjects."
 
 ```gdscript
-class_name EnemyStats
+class_name EnemyStats                              # enemy_stats.gd — one file, own class_name
 extends Resource
 
 @export var display_name: String = "Grunt"
 @export_range(1, 999) var max_health: int = 20
 @export_range(0.0, 400.0) var speed: float = 90.0
-@export var loot: Array[LootEntry] = []          # nested custom Resources
+@export var loot: Array[LootEntry] = []            # nested custom Resources
 @export var death_sound: AudioStream
-```
 
-```gdscript
+# enemy.gd
 class_name Enemy
 extends Node2D
 
-@export var stats: EnemyStats                     # drag a .tres in the Inspector
+@export var stats: EnemyStats                      # drag a .tres in the Inspector
 var _health: int
 
 func _ready() -> void:
     assert(stats != null, "Enemy requires stats")
-    _health = stats.max_health
+    _health = stats.max_health                     # mutable state on the node, not the resource
 ```
 
 Rules and traps:
@@ -446,23 +434,21 @@ connects every child's `finished` signal to `_change_state` in `_enter_tree()`; 
 pops the stack — that is the pushdown automaton, used for jump/stagger/attack in
 `player/player_state_machine.gd:25-27`.
 
-Why this design and not a `match` on an enum:
+Why this beats a `match` on an enum: each state is one file with one responsibility, so the
+FileSystem dock documents what the actor can do (the demo README's own argument); states are
+`Node`s, so they can hold `@export`ed tuning and their own `Timer` children; transitions are
+signals, so a state never names its successor's implementation.
 
-- Each state is one file with one responsibility; the FileSystem dock becomes the documentation
-  of what the actor can do (the demo's README makes exactly this argument).
-- States are `Node`s, so they can hold `@export`ed tuning and their own `Timer` children.
-- Transitions are signals, so a state never names its successor's implementation.
-
-Two details worth stealing: the machine resolves its initial state in `_enter_tree()` and
+Two details worth stealing. The machine resolves its initial state in `_enter_tree()` and
 comments *why* it uses `get_child(0)` rather than `get_path()` ("Children have not entered the
-tree yet during their parent's `_enter_tree()`"); and states reach shared nodes through `owner`
-(`owner.get_node(^"AnimationPlayer")` in `states/motion/on_ground/idle.gd`), which is the manual's
+tree yet during their parent's `_enter_tree()`"). States reach shared nodes through `owner`
+(`owner.get_node(^"AnimationPlayer")` in `states/motion/on_ground/idle.gd`) — the manual's
 sanctioned alternative to a global (`autoloads_versus_regular_nodes.rst`: "Store the data in an
 object to which each node has access, for example using the `owner` property").
 
-Costs, stated honestly: one `Node` per state is heavier than an enum, and node-per-state
-machines are awkward when many actors share one machine. For hundreds of simple agents, a
-`RefCounted` state object or a plain enum + `match` is the right call.
+Cost, stated honestly: one `Node` per state is heavier than an enum and awkward when many actors
+share one machine. For hundreds of simple agents, a `RefCounted` state object or enum + `match`
+is the right call.
 
 ## 13. Save/load architecture and versioned save data
 
@@ -474,23 +460,23 @@ Three storage mechanisms, all in the class reference:
 | `FileAccess.store_var()` / `get_var()` | game state, compactly | binary; handles `Vector2`, `Color`, etc. natively |
 | `JSON.stringify()` / `JSON.parse()` | debuggable / interchange saves | **cannot** represent `Vector2`, `Vector3`, `Color`, `Rect2`, `Quaternion`; larger files |
 
-`io/saving_games.rst` documents the group-based approach: mark savable nodes into a `Persist`
-group, have each expose `save() -> Dictionary`, iterate `get_tree().get_nodes_in_group("Persist")`,
-skip nodes whose `scene_file_path` is empty (they cannot be re-instantiated), and store
-`scene_file_path` + parent path so load can rebuild them. Its own caveats: nested Persist objects
-break the recorded `NodePath`s, so load parents in a first pass; and reverting existing state
-before loading "will vary wildly depending on the needs of a project."
-
-Vendored working code: `third_party/godot-demo-projects/loading/serialization/` has
-`save_load_config_file.gd` and `save_load_json.gd` side by side over the same game.
+`io/saving_games.rst` documents the group-based approach: put savable nodes in a `Persist` group,
+give each a `save() -> Dictionary`, iterate `get_tree().get_nodes_in_group("Persist")`, skip nodes
+whose `scene_file_path` is empty (they cannot be re-instantiated), and store `scene_file_path` +
+parent path so load can rebuild them. Its own caveats: nested Persist objects break the recorded
+`NodePath`s, so load parents in a first pass; and reverting existing state before loading "will
+vary wildly depending on the needs of a project." Working code:
+`third_party/godot-demo-projects/loading/serialization/` has `save_load_config_file.gd` and
+`save_load_json.gd` side by side over the same game.
 
 **Security.** From that demo's own comment: `ConfigFile` "can even store Objects, but be extra
 careful where you deserialize them from, because they can include (potentially malicious)
-scripts." Both `FileAccess.get_var(allow_objects)` and `JSON.to_native(json, allow_objects)`
-default to `false`. Never pass `true` for save files a user could edit or download.
+scripts." `FileAccess.get_var(allow_objects)` and `JSON.to_native(json, allow_objects)` both
+default to `false`. Never pass `true` for a save file a user could edit or download. The same
+caution applies to `ResourceLoader.load()`ing a user-writable `.tres`: a `.tres` names the script
+it instantiates, so a hand-edited save can select a different script in the project.
 
-**Versioning — do this from commit one.** Nothing in the manual covers it; this is the pattern,
-flagged as mine:
+**Versioning — do this from commit one.** Not covered by the manual; the pattern is mine:
 
 ```gdscript
 class_name SaveData
@@ -504,37 +490,30 @@ const CURRENT_VERSION := 3
 static func load_from(path: String) -> SaveData:
     if not FileAccess.file_exists(path):
         return SaveData.new()
-    var data := ResourceLoader.load(path, "SaveData", ResourceLoader.CACHE_MODE_IGNORE) as SaveData
+    # CACHE_MODE_IGNORE: never hand back a stale cached copy of the save.
+    var data := ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE) as SaveData
     if data == null:
         push_warning("Corrupt save at %s; starting fresh" % path)
         return SaveData.new()
     return _migrate(data)
 
 static func _migrate(data: SaveData) -> SaveData:
-    # One if-block per version bump. Never delete an old branch.
-    if data.version < 2:
+    if data.version < 2:                                  # one block per bump; never delete one
         data.stats["best_wave"] = data.stats.get("wave", 0)
         data.version = 2
-    if data.version < 3:
-        data.stats.erase("deprecated_field")
-        data.version = 3
     return data
 ```
 
-Non-negotiables: write `version` first and read it first; every load path must survive a missing
-file, a truncated file, and a *newer* version than the build understands (refuse, don't crash);
-save atomically (write `user://save.tmp`, then rename) so a crash mid-write does not destroy the
-only save.
+Non-negotiables: write `version` first and read it first; survive a missing file, a truncated
+file, and a *newer* version than the build understands (refuse, don't crash); save atomically
+(write `user://save.tmp`, then rename). Always `user://` — `res://` is read-only in an exported
+build. On HTML5 `user://` is a virtual filesystem in IndexedDB (`io/data_paths.rst`): per-origin,
+wiped by "clear site data", requiring the user to allow cookies (`export/exporting_for_web.rst`).
+Shipping to GitHub Pages, treat browser saves as best-effort, never the only copy.
 
-**Paths.** Always `user://` for saves — `res://` is read-only in an exported build. On HTML5
-`user://` is a virtual filesystem in IndexedDB (`io/data_paths.rst`), which means it is
-per-origin, wiped by "clear site data", and requires the user to allow cookies
-(`export/exporting_for_web.rst`). Since this project ships to GitHub Pages, treat browser saves
-as *best effort* and never as the only copy of anything.
-
-This repo's current implementation, `game/scripts/game_state.gd:79-89`, is a two-key `ConfigFile`
-at `user://accrete.cfg` with **no version key**. That is fine for two integers and is exactly
-the thing to replace before the first save format that matters.
+This repo's `game/scripts/game_state.gd:79-89` is a two-key `ConfigFile` at `user://accrete.cfg`
+with **no version key** — fine for two integers, and exactly the thing to replace before the
+first save format that matters.
 
 ## 14. Scene transitions and loading
 
@@ -548,21 +527,17 @@ Four options, all real (`SceneTree`):
 | `reload_current_scene()` | re-instantiates `current_scene` from its original `PackedScene` |
 | `unload_current_scene()` | unloads without replacing |
 
-`change_scene_to_node()`'s documented ordering is the one to internalise, and it applies to the
-file/packed variants too (their docs point at it):
+`change_scene_to_node()`'s documented ordering applies to the file/packed variants too (their
+docs point at it): the outgoing scene is **removed from the tree immediately** — from that point
+`Node.get_tree()` on it returns `null` and `current_scene` is `null` — and only **at the end of
+the frame** is it freed and the new scene added. Consequences: never assume `get_tree()` is valid
+in code running after you request a change; `await get_tree().scene_changed` if you need the new
+scene; any reference to the node passed to `change_scene_to_node()` becomes invalid once
+`SceneTree` takes ownership.
 
-> 1. The current scene node is immediately removed from the tree. From that point,
->    `Node.get_tree()` called on the outgoing scene will return `null`. `current_scene` will be
->    `null` too. 2. At the end of the frame, the former scene is freed and the new scene node is
->    added.
-
-Consequences: never assume `get_tree()` is valid in code running after you requested a change;
-`await get_tree().scene_changed` if you need the new scene; and any reference you held to the
-node passed to `change_scene_to_node()` becomes invalid once `SceneTree` takes ownership.
-
-Manual swapping — when you need a fade, a loading screen, or to keep the player alive across
-levels — is `scripting/change_scenes_manually.rst`, and the canonical implementation is vendored
-at `third_party/godot-demo-projects/loading/autoload/global.gd`. Its critical move is deferral:
+Manual swapping — for a fade, a loading screen, or keeping the player alive across levels — is
+`scripting/change_scenes_manually.rst`; the canonical implementation is vendored at
+`third_party/godot-demo-projects/loading/autoload/global.gd`. Its critical move is deferral:
 
 ```gdscript
 func goto_scene(path: String) -> void:
@@ -575,10 +550,10 @@ func _deferred_goto_scene(path: String) -> void:
     get_tree().current_scene = scene            # only after add_child
 ```
 
-`change_scenes_manually.rst` also enumerates the three ways to retire a scene — free it
-(unloads memory, loses data), hide it (`CanvasItem.hide()`; keeps memory *and* processing —
-"will become a problem on memory-sensitive platforms like web"), or `remove_child()` it (keeps
-memory, stops processing, easiest to restore). For a web build, free.
+`change_scenes_manually.rst` enumerates three ways to retire a scene: free it (unloads memory,
+loses data), hide it (`CanvasItem.hide()`; keeps memory *and* processing — "will become a problem
+on memory-sensitive platforms like web"), or `remove_child()` it (keeps memory, stops processing,
+easiest to restore). For a web build, free.
 
 **Background loading** (`io/background_loading.rst`): `ResourceLoader.load_threaded_request(path)`,
 poll `load_threaded_get_status(path, progress_array)` — the docs say to poll "during different
@@ -625,28 +600,27 @@ game/
   addons/             third-party only
 ```
 
-Keep a script beside the scene it drives (`player.tscn` + `player.gd`), not in a global
-`scripts/` bucket. This repo's `game/scripts/*.gd` with `game/scenes/*.tscn` is the bucket
-layout; it is survivable at 14 files and stops scaling around 40, because "which scene owns this
-script" becomes a grep.
+Keep a script beside the scene it drives (`player.tscn` + `player.gd`), not in a global `scripts/`
+bucket. This repo's `game/scripts/*.gd` + `game/scenes/*.tscn` is the bucket layout: survivable at
+14 files, stops scaling around 40, because "which scene owns this script" becomes a grep.
 
-Also from `project_organization.rst`: Godot uses the filesystem as-is with no asset database, so
-**moving a file in the OS breaks references**. Move files from inside the Godot editor, which
-rewrites dependents. Since **4.4**, `.tscn`/`.tres` reference dependencies by `uid://` (see the
-`.uid` sidecar files next to every `.gd` in `game/scripts/`), which makes renames far safer —
-commit the `.uid` files.
+Godot uses the filesystem as-is with no asset database, so **moving a file outside the editor
+breaks references**; move files from inside Godot, which rewrites dependents. Since **4.4**,
+resource references are stored as `uid://` (hence the `.uid` sidecar next to every `.gd` in
+`game/scripts/`), which makes renames far safer — commit the `.uid` files
+(`migrating/upgrading_to_godot_4.4.rst`).
 
 ## 16. Keeping systems testable headlessly
 
 `godot --headless` implies `--display-driver headless --audio-driver Dummy`
-(`tutorials/editor/command_line_tutorial.rst`), and is combinable with `--script`, `--quit`,
-`--quit-after <frames>`, `--check-only`, and `--import`. This repo's CI
+(`tutorials/editor/command_line_tutorial.rst`) and combines with `--script`, `--quit`,
+`--quit-after <frames>`, `--check-only`, `--import`. This repo's CI
 (`.github/workflows/godot-ci.yml`) already does the cheap version: import the project, boot each
-scene for 300 frames headless, and fail the build if the log contains `SCRIPT ERROR`, `Parse
-Error`, or `ERROR:` (filtering GPU/audio noise). That catches every null-path and typo'd
-property in code that actually runs — which is most of the fragility this guide is about.
+scene for 300 frames headless, fail on `SCRIPT ERROR` / `Parse Error` / `ERROR:` in the log
+(filtering GPU/audio noise). That catches every null path and typo'd property in code that
+actually runs — most of the fragility this guide is about.
 
-To go further than smoke-booting, architecture has to cooperate:
+To go further than smoke-booting, the architecture has to cooperate:
 
 | Rule | Consequence |
 | --- | --- |
