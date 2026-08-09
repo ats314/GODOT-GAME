@@ -5,6 +5,7 @@
 # Exported builds
 build/
 export/
+dist/
 *.pck
 # ...except the published GitHub Pages builds
 !play/*.pck
