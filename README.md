@@ -51,7 +51,7 @@ demo's `project.godot` (e.g. `third_party/godot-demo-projects/2d/dodge_the_creep
 - [ ] Game: build in `game/` (vertical slice → systems → content → ship)
 
 No game is currently in development. The previous concept was removed; the
-foundation above is intact and ready for the next one. Design constraints
-carried forward: no artist (procedural / primitives / CC0 art only),
-controller-first with full parity from day one, and a solo part-time scope
-of roughly 2–3 months.
+foundation above is intact and ready for the next one. One design constraint
+carries forward, and it is hard: **controller-first**, with full parity from
+day one — no mouse-only interactions, and every menu d-pad navigable with
+visible focus.
