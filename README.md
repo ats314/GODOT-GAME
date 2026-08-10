@@ -7,7 +7,6 @@ cleanly separated from the reference code it learns from and borrows from.
 ## Repository layout
 
 ```
-game/                      The game (to be built) — our own MIT-licensed code
 third_party/               Vendored snapshots of freely licensed Godot projects
   godot-demo-projects/     Official Godot demos (MIT) — ~120 projects: 2D, 3D,
                            GUI, audio, networking, shaders, saving, and more
@@ -48,5 +47,11 @@ demo's `project.godot` (e.g. `third_party/godot-demo-projects/2d/dodge_the_creep
 ## Status
 
 - [x] Foundation: vendored free Godot code + license records + deep-dive survey
-- [x] Master game design: **ACCRETE** — see `docs/GAME_DESIGN.md`
+- [ ] Game design: concept not yet chosen
 - [ ] Game: build in `game/` (vertical slice → systems → content → ship)
+
+No game is currently in development. The previous concept was removed; the
+foundation above is intact and ready for the next one. Design constraints
+carried forward: no artist (procedural / primitives / CC0 art only),
+controller-first with full parity from day one, and a solo part-time scope
+of roughly 2–3 months.

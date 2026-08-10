@@ -6,8 +6,6 @@
 build/
 export/
 *.pck
-# ...except the published GitHub Pages build
-!play/*.pck
 # OS / editor noise
 .DS_Store
 Thumbs.db
