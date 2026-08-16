@@ -1831,7 +1831,31 @@ const PAL_FLAT = new Float32Array(PALETTE.flat());
 
 let tPrev = performance.now(), tAcc = 0, flash = 0, nextBolt = 14 + Math.random() * 20;
 let frames = 0, msAcc = 0, dtAcc = 0, pendingShot = false;
-let wallMin = 1e9, refreshMs = 16.7;
+let refreshMs = 16.7, qCool = 0;
+const FT = new Float32Array(96);
+let ftI = 0, ftN = 0;
+const REFRESH_HZ = [24, 30, 45, 48, 60, 72, 90, 120, 144];
+function snapHz(ms){
+  const hz = 1000 / clamp(ms, 5.5, 46);
+  let best = REFRESH_HZ[0];
+  for (const c of REFRESH_HZ) if (Math.abs(c - hz) < Math.abs(best - hz)) best = c;
+  return Math.abs(best - hz) < best * 0.15 ? 1000 / best : clamp(ms, 5.5, 46);
+}
+// idle vsync cadence, sampled before the renderer starts issuing work
+function probeDisplay(done){
+  const d = [];
+  let last = performance.now(), n = 0;
+  const tick = now => {
+    const dt = now - last; last = now;
+    if (n++ > 2 && dt > 1 && dt < 200) d.push(dt);
+    if (d.length < 24 && n < 60) requestAnimationFrame(tick);
+    else {
+      if (d.length){ d.sort((a, b) => a - b); refreshMs = snapHz(d[d.length >> 1]); }
+      done();
+    }
+  };
+  requestAnimationFrame(tick);
+}
 
 function frame(now){
   requestAnimationFrame(frame);
@@ -1933,20 +1957,21 @@ function frame(now){
 
   /* ---- housekeeping ---- */
   msAcc += performance.now() - t0; dtAcc += dt; frames++;
-  wallMin = Math.min(wallMin, dt * 1000);
+  FT[ftI] = dt * 1000; ftI = (ftI + 1) % FT.length; ftN = Math.min(ftN + 1, FT.length);
   if (pendingShot){ pendingShot = false; writePng(); }
   if (frames >= 30){
-    const cpu = msAcc / frames;                      // submit time; async, so a weak signal
-    const wall = (dtAcc / frames) * 1000;            // what the display actually did
-    fpsEMA = lerp(fpsEMA, 1000 / Math.max(wall, 1), 0.6);
-    // the best frame in the window is the display's floor, not our budget: on a
-    // 30Hz panel that is ~33ms and a 33ms frame means idle, not overloaded
-    refreshMs = clamp(lerp(refreshMs, Math.max(wallMin, 6), 0.35), 6, 34);
-    if (S.autoQuality){
-      if (wall > refreshMs + 13 && S.quality > 0) setQuality(S.quality - 1);
-      else if (wall < refreshMs + 5 && S.quality < 3) setQuality(S.quality + 1);
+    if (ftN >= FT.length){
+      const a = Array.prototype.slice.call(FT, 0, ftN).sort((x, y) => x - y);
+      const p50 = a[a.length >> 1];                          // the typical frame
+      fpsEMA = lerp(fpsEMA, 1000 / Math.max(p50, 1), 0.6);
+      if (S.autoQuality && --qCool <= 0){
+        // wide gap between the two thresholds so a frame time between them
+        // settles instead of ping-ponging
+        if (p50 > refreshMs * 1.35 + 4 && S.quality > 0){ setQuality(S.quality - 1); qCool = 4; }
+        else if (p50 < refreshMs * 1.12 + 2 && S.quality < 3){ setQuality(S.quality + 1); qCool = 4; }
+      }
     }
-    frames = 0; msAcc = 0; dtAcc = 0; wallMin = 1e9;
+    frames = 0; msAcc = 0; dtAcc = 0;
     updateHud();
     drawMap();
   }
@@ -2095,8 +2120,9 @@ addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setT
 applyHud();
 updateHud();
 drawMap();
-// the city renders live behind the boot screen, so the first thing you see is the city
-S.running = true;
+// measure the display first (a few hundred ms of black), then render live behind
+// the boot screen so the first thing you see is the city
+probeDisplay(() => { S.running = true; });
 requestAnimationFrame(frame);
 </script>
 </body>
