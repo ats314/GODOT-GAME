@@ -73,6 +73,7 @@
   #bRun{ bottom:calc(env(safe-area-inset-bottom,0px) + 118px); }
   #bFly{ bottom:calc(env(safe-area-inset-bottom,0px) + 44px); }
   #bSet{ bottom:calc(env(safe-area-inset-bottom,0px) + 192px); }
+  #bCity{ bottom:calc(env(safe-area-inset-bottom,0px) + 266px); font-size:9px; }
   @media (max-width:760px){ #map{ width:96px; height:96px; } #bl{ max-width:44vw; font-size:9.5px; } }
 </style>
 </head>
@@ -89,6 +90,7 @@
   <button class="tbtn" id="bRun">RUN</button>
   <button class="tbtn" id="bFly">FLY</button>
   <button class="tbtn" id="bSet">SET</button>
+  <button class="tbtn" id="bCity">CITY</button>
 </div>
 
 <div id="boot">
@@ -1586,6 +1588,10 @@ document.getElementById('bFly').addEventListener('touchstart', e => {
 document.getElementById('bSet').addEventListener('touchstart', e => {
   e.stopPropagation(); setAlphabet(ALPHA + 1);
 }, { passive:true });
+// K cycles measured cities on a keyboard; touch devices need their own control
+document.getElementById('bCity').addEventListener('touchstart', e => {
+  e.stopPropagation(); loadLidarCity(lidarIndex++);
+}, { passive:true });
 
 /* ═════════════════════════════ MOVEMENT ═══════════════════════════════ */
 function updatePlayer(dt){
@@ -2010,7 +2016,8 @@ function start(){
   if (!isTouch) canvas.requestPointerLock();
   bl.innerHTML = isTouch ?
     '<b>left stick</b> walk &nbsp; <b>drag right</b> look<br>' +
-    '<b>RUN</b> sprint &nbsp; <b>FLY</b> drone &nbsp; <b>SET</b> alphabet<br>' +
+    '<b>CITY</b> manhattan / san francisco &nbsp; <b>SET</b> alphabet<br>' +
+    '<b>RUN</b> sprint &nbsp; <b>FLY</b> drone<br>' +
     'tap the city to hide this' :
     '<b>WASD</b> walk &nbsp; <b>MOUSE</b> look &nbsp; <b>SHIFT</b> run &nbsp; <b>F</b> drone<br>' +
     '<b>V</b> alphabet: ascii / teletext / quadrant / braille &nbsp; <b>[ ]</b> glyph size<br>' +
