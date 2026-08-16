@@ -1776,21 +1776,32 @@ function readFrameChars(){
 async function copyFrame(){
   const txt = readFrameChars();
   try { await navigator.clipboard.writeText(txt); toast('FRAME COPIED — ' + RT.cols + 'x' + RT.rows + ' CHARS'); }
-  catch (e){
-    const blob = new Blob([txt], { type:'text/plain' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = 'noctis7-frame.txt'; a.click();
-    toast('FRAME SAVED AS TEXT');
+  catch (e){ await offerFile('noctis7-frame.txt', txt, 'FRAME SAVED AS TEXT'); }
+}
+// Some hosts mediate downloads rather than letting a page start one, so ask
+// the host first and fall back to a plain anchor when there is no host to ask.
+async function offerFile(filename, data, okMsg){
+  try {
+    const dl = (typeof claude !== 'undefined' && claude.use) ? await claude.use('downloads') : null;
+    if (dl){ await dl.save({ filename, data }); toast(okMsg); return true; }
+  } catch (e){
+    toast(e && e.code === 'declined' ? 'SAVE CANCELLED' : 'SAVE UNAVAILABLE');
+    return false;
   }
+  try {
+    const blob = data instanceof Blob ? data : new Blob([data], { type:'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast(okMsg);
+    return true;
+  } catch (e){ toast('SAVE UNAVAILABLE'); return false; }
 }
 function savePng(){ pendingShot = true; }
 function writePng(){
-  canvas.toBlob(b => {
-    if (!b) return;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(b); a.download = 'noctis7-' + CITY.seed.toString(16) + '.png'; a.click();
-    toast('PNG SAVED');
-  });
+  canvas.toBlob(b => { if (b) offerFile('noctis7-' + (CITY.seed >>> 0).toString(16) + '.png', b, 'PNG SAVED'); });
 }
 
 function newCity(seed){
