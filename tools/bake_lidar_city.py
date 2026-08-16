@@ -278,18 +278,33 @@ def main():
     s_int = np.zeros((GRID, GRID), dtype=np.float64)
     s_int2 = np.zeros((GRID, GRID), dtype=np.float64)
     n_multi = np.zeros((GRID, GRID), dtype=np.int64)
-    # ...and the channels the first version of this tool threw away. Point
-    # density and multi-return separate road from other ground at 0.05 and 0.09
-    # sigma respectively — which is to say not at all — so a materials
-    # classifier needs more of the survey than intensity alone.
+    # ...and the channels the first version of this tool threw away. See
+    # docs/SURFACE_CLASSIFICATION.md: together these take road-vs-other-ground
+    # from AUC 0.791 on mean intensity alone to 0.897, with no second sensor.
     s_rgb = np.zeros((GRID, GRID, 3), dtype=np.float64)   # NYC carries colour
     n_rgb = np.zeros((GRID, GRID), dtype=np.int64)
     s_ang = np.zeros((GRID, GRID), dtype=np.float64)      # incidence angle
     s_z2 = np.zeros((GRID, GRID), dtype=np.float64)       # vertical spread
     s_z = np.zeros((GRID, GRID), dtype=np.float64)
     n_first = np.zeros((GRID, GRID), dtype=np.int64)      # single-echo fraction
+    # Averaging intensity destroys the most road-specific thing in the channel:
+    # lane paint is retroreflective, so a painted cell has a bright TAIL rather
+    # than a bright mean. Count the tail instead of smoothing it away.
+    n_hi = np.zeros((GRID, GRID), dtype=np.int64)
+    n_vhi = np.zeros((GRID, GRID), dtype=np.int64)
+    # Class 17 is 6.9M of Midtown's 18.4M points and was being thrown away. A
+    # bridge deck is a road surface, so this is free label data.
+    n_brg = np.zeros((GRID, GRID), dtype=np.int64)
+    n_rail = np.zeros((GRID, GRID), dtype=np.int64)
     cls_hist = {}
     have_rgb = [False]
+
+    # Intensity is 8-bit in NY and 16-bit in SF, so the bright thresholds have to
+    # come from the data. One node is enough to set them.
+    probe = laspy.read(io.BytesIO(fetch(f"{BASE}/{args.dataset}/ept-data/{nodes[0][0]}.laz")))
+    pi = np.asarray(probe.intensity).astype(np.float64)
+    HI, VHI = np.percentile(pi, [90, 99])
+    print(f"intensity thresholds from a sample node: p90 {HI:.0f}, p99 {VHI:.0f}")
 
     def ingest(item):
         key, _ = item
@@ -339,7 +354,9 @@ def main():
                 np.add.at(s_rgb[..., i].reshape(-1), flat,
                           np.asarray(getattr(f, ch))[keep].astype(np.float64))
             np.add.at(n_rgb.reshape(-1), flat, 1)
-        for mask, acc in ((cls == C_BUILDING, n_bld),
+        for mask, acc in ((inten > HI, n_hi), (inten > VHI, n_vhi),
+                          (cls == C_BRIDGE, n_brg), (cls == 10, n_rail),
+                          (cls == C_BUILDING, n_bld),
                           ((cls == C_HIGHVEG) | (cls == C_MEDVEG), n_veg),
                           (cls == C_WATER, n_wat)):
             if mask.any():
@@ -476,6 +493,9 @@ def main():
     rough = np.sqrt(np.maximum(s_z2 / npz - (s_z / npz) ** 2, 0.0))   # vertical spread
     single = n_first / npz                                            # single-echo share
     angle = s_ang / npz
+    int_sd = np.sqrt(np.maximum(s_int2 / npz - (s_int / npz) ** 2, 0.0))
+    f_hi, f_vhi = n_hi / npz, n_vhi / npz
+    f_brg, f_rail = n_brg / npz, n_rail / npz
     rgb = s_rgb / np.maximum(n_rgb, 1)[..., None]
     if have_rgb[0]:
         mx = max(float(rgb.max()), 1.0)
@@ -495,7 +515,9 @@ def main():
                             filled=filled, valid=valid, height=height, n_wat=n_wat,
                             mean_int=mean_int, multi=multi, water=water, rough=rough,
                             single=single, angle=angle, lum=lum, gex=gex, rgb=rgb,
-                            n_veg=n_veg, n_bld=n_bld, has_rgb=np.array(have_rgb))
+                            n_veg=n_veg, n_bld=n_bld, has_rgb=np.array(have_rgb),
+                            int_sd=int_sd, f_hi=f_hi, f_vhi=f_vhi,
+                            f_brg=f_brg, f_rail=f_rail)
         print(f"dumped per-cell fields to {args.dump}")
 
     veg = valid & (multi > 0.35) & (height > 2.0)
