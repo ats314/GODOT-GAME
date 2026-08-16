@@ -1,0 +1,148 @@
+# path	name	features	autoloads	description
+third_party/Godot-Game-Template	Game Template	4.7	AppConfig,SceneLoader,ProjectMusicController,ProjectUISoundController	
+third_party/ShaderV	ShaderV	4.2		
+third_party/Starter-Kit-3D-Platformer	Starter Kit 3D Platformer	4.6, Forward Plus	Audio	
+third_party/Starter-Kit-City-Builder	Starter Kit City Builder	4.6, Forward Plus	Audio	
+third_party/Starter-Kit-FPS	Starter Kit FPS	4.6, Forward Plus	Audio	
+third_party/Terrain3D/project	Terrain3D	4.5		
+third_party/beehave	Beehave	4.7	BeehaveGlobalMetrics,BeehaveGlobalDebugger	
+third_party/godot-demo-projects/2d/bullet_shower	Bullet Shower	4.7		Demonstrates how to manage large amounts of objects efficiently using low-level Servers.
+third_party/godot-demo-projects/2d/custom_drawing	Custom Drawing in 2D	4.7, Mobile		A demo showing how to draw 2D elements in Godot without using nodes.
+third_party/godot-demo-projects/2d/dodge_the_creeps	Dodge the Creeps	4.7		
+third_party/godot-demo-projects/2d/drawable_textures	Drawable Textures	4.7		
+third_party/godot-demo-projects/2d/dynamic_tilemap_layers	Dynamic TileMap Layers	4.7		
+third_party/godot-demo-projects/2d/finite_state_machine	Hierarchical Finite State Machine	4.7		
+third_party/godot-demo-projects/2d/glow	Glow for 2D	4.7		
+third_party/godot-demo-projects/2d/hexagonal_map	Hexagonal Game	4.7		Very simple demo showing a hexagonal TileMap and TileSet.
+third_party/godot-demo-projects/2d/instancing	Scene Instancing Demo	4.7		
+third_party/godot-demo-projects/2d/isometric	Isometric Game	4.7		
+third_party/godot-demo-projects/2d/kinematic_character	Kinematic Character 2D	4.7		
+third_party/godot-demo-projects/2d/light2d_as_mask	2D Lights as Mask	4.7		Example of how to use 2D lights to mask objects on screen.
+third_party/godot-demo-projects/2d/lights_and_shadows	2D Lights and Shadows	4.7		
+third_party/godot-demo-projects/2d/navigation	Navigation Polygon 2D	4.7		
+third_party/godot-demo-projects/2d/navigation_astar	Grid-based Pathfinding with AStarGrid2D	4.7		
+third_party/godot-demo-projects/2d/navigation_mesh_chunks	Navigation Mesh Chunks 2D	4.7, GL Compatibility		
+third_party/godot-demo-projects/2d/particles	2D GPUParticles	4.7		This demo showcases how 2D particle systems work in Godot.
+third_party/godot-demo-projects/2d/physics_platformer	Physics-Based Platformer 2D	4.7		
+third_party/godot-demo-projects/2d/physics_tests	2D Physics Tests	4.7	Log,System	
+third_party/godot-demo-projects/2d/platformer	Platformer 2D	4.7	Music	
+third_party/godot-demo-projects/2d/polygons_lines	2D Polygons and Lines	4.7		
+third_party/godot-demo-projects/2d/pong	Pong with GDScript	4.7		
+third_party/godot-demo-projects/2d/role_playing_game	JRPG Demo	4.7		
+third_party/godot-demo-projects/2d/screen_space_shaders	Screen Space Shaders	4.7		
+third_party/godot-demo-projects/2d/skeleton	Skeleton2D Demo	4.7		
+third_party/godot-demo-projects/2d/sprite_shaders	2D Shaders for Sprites	4.7		
+third_party/godot-demo-projects/2d/tween	Tween Demo	4.7		A demo showing advanced tween usage.
+third_party/godot-demo-projects/3d/antialiasing	3D Anti-Aliasing	4.7		This project showcases the various 3D antialiasing techniques supported by Godot.
+third_party/godot-demo-projects/3d/csg	Constructive Solid Geometry (CSG)	4.7		
+third_party/godot-demo-projects/3d/decals	Decals	4.7		
+third_party/godot-demo-projects/3d/global_illumination	Global Illumination	4.7		This demo showcases Godot's global illumination systems: LightmapGI, VoxelGI, SDFGI, ReflectionProbe and screen-space effects like SSAO and SSIL.
+third_party/godot-demo-projects/3d/graphics_settings	3D Graphics Settings	4.7		
+third_party/godot-demo-projects/3d/ik	3D Inverse Kinematics	4.7		
+third_party/godot-demo-projects/3d/kinematic_character	Kinematic Character 3D	4.7		
+third_party/godot-demo-projects/3d/labels_and_texts	3D Labels and Texts	4.7		This project showcases 2 ways to draw text in 3D space: the Label3D node, and MeshInstance3D with a TextMesh primitive.
+third_party/godot-demo-projects/3d/lights_and_shadows	3D Lights and Shadows	4.7		
+third_party/godot-demo-projects/3d/material_testers	Material Testers	4.7		
+third_party/godot-demo-projects/3d/navigation	3D Navigation	4.7		
+third_party/godot-demo-projects/3d/navigation_mesh_chunks	Navigation Mesh Chunks 3D	4.7, GL Compatibility		
+third_party/godot-demo-projects/3d/occlusion_culling_mesh_lod	Occlusion Culling and Mesh LOD	4.7		This demo showcases the use of occlusion culling and mesh level of detail in a 3D scene.
+third_party/godot-demo-projects/3d/particles	3D Particles	4.7		This project showcases various 3D particle features supported by Godot, for both GPU-based and CPU-based particles.
+third_party/godot-demo-projects/3d/physical_light_camera_units	Physical Light and Camera Units	4.7		
+third_party/godot-demo-projects/3d/physics_interpolation	Physics Interpolation	4.7, GL Compatibility		
+third_party/godot-demo-projects/3d/physics_tests	3D Physics Tests	4.7	Log,System	
+third_party/godot-demo-projects/3d/platformer	Platformer 3D	4.7		
+third_party/godot-demo-projects/3d/procedural_materials	Procedural Materials	4.7		
+third_party/godot-demo-projects/3d/ragdoll_physics	Ragdoll Physics	4.7		This demo includes an example of ragdoll simulation for characters.
+third_party/godot-demo-projects/3d/rigidbody_character	RigidBody Character 3D	4.7		
+third_party/godot-demo-projects/3d/sky_shaders	3D Sky Shaders	4.7		A short educational sample showing one way of using sky shaders to render real time volumetric cloudscapes.
+third_party/godot-demo-projects/3d/soft_body_physics	Soft Body Physics	4.7		An example of soft body physics (deformable objects) such as cloth, boxes and spheres.
+third_party/godot-demo-projects/3d/sprites	3D Sprites and Animated Sprites	4.7		
+third_party/godot-demo-projects/3d/squash_the_creeps	Squash the Creeps (3D)	4.7	MusicPlayer	
+third_party/godot-demo-projects/3d/tonemap_color_correction	Tonemapping and Color Correction	4.7		
+third_party/godot-demo-projects/3d/truck_town	Truck Town	4.7		
+third_party/godot-demo-projects/3d/variable_rate_shading	Variable Rate Shading	4.7		
+third_party/godot-demo-projects/3d/visibility_ranges	Visibility Ranges (HLOD)	4.7		
+third_party/godot-demo-projects/3d/volumetric_fog	Volumetric Fog	4.7		
+third_party/godot-demo-projects/3d/voxel	Voxel Game	4.7	Settings	
+third_party/godot-demo-projects/3d/waypoints	3D Waypoints	4.7		This is an example of displaying GUI elements such as Labels in a 3D world, without relying on viewports. This results in better readability and performance for use cases such as showing player names.
+third_party/godot-demo-projects/audio/audio_effects	Audio Effects	4.7, GL Compatibility		
+third_party/godot-demo-projects/audio/bpm_sync	BPM Sync Demo	4.7		A demo of how to sync the audio playback with the time for a consistent BPM.
+third_party/godot-demo-projects/audio/device_changer	Audio Device Changer Demo	4.7		This is a demo showing how the audio output device can be changed from Godot.
+third_party/godot-demo-projects/audio/generator	Audio Generator Demo	4.7		
+third_party/godot-demo-projects/audio/mic_record	Audio Mic Record Demo	4.7		
+third_party/godot-demo-projects/audio/midi_piano	MIDI Piano Demo	4.7		
+third_party/godot-demo-projects/audio/rhythm_game	Rhythm Game	4.7, GL Compatibility	GlobalSettings	Simple rhythm game utilizing precise playback position.
+third_party/godot-demo-projects/audio/spectrum	Audio Spectrum Demo	4.7		This is a demo showing how a spectrum analyzer can be built using Godot.
+third_party/godot-demo-projects/audio/text_to_speech	Text-to-speech demo	4.7		This is a demo showing text-to-speech support.
+third_party/godot-demo-projects/compute/heightmap	Compute Shader Heightmap	4.7		
+third_party/godot-demo-projects/compute/post_shader	Compositor Effects (Post-Processing)	4.7, Forward Plus		
+third_party/godot-demo-projects/compute/texture	Compute Texture	4.7		
+third_party/godot-demo-projects/gui/accessibility	UI Accessibility	4.7		
+third_party/godot-demo-projects/gui/bidi_and_font_features	BiDi and Font Features	4.7		
+third_party/godot-demo-projects/gui/control_gallery	Control Gallery	4.7		Showcases various Control nodes with their names affixed for easy recognition.
+third_party/godot-demo-projects/gui/custom_splash_screen	Custom Splash Screen	4.7		
+third_party/godot-demo-projects/gui/drag_and_drop	Drag & Drop (GUI)	4.7		
+third_party/godot-demo-projects/gui/gd_paint	GD Paint	4.7		
+third_party/godot-demo-projects/gui/input_mapping	Input Mapping GUI	4.7	KeyPersistence	
+third_party/godot-demo-projects/gui/msdf_font	Multi-channel Signed Distance Field Font Demo	4.7		
+third_party/godot-demo-projects/gui/multiple_resolutions	Multiple Resolutions and Aspect Ratios	4.7		
+third_party/godot-demo-projects/gui/pseudolocalization	Pseudolocalization	4.7		
+third_party/godot-demo-projects/gui/regex	RegEx (Regular Expressions)	4.7		
+third_party/godot-demo-projects/gui/rich_text_bbcode	Rich Text Label with BBCode	4.7		A demo showcasing the support for rich text and BBCode via RichTextLabel.
+third_party/godot-demo-projects/gui/theming_override	GUI Theming Override	4.7		Demonstrates how to override GUI colors and styleboxes at runtime.
+third_party/godot-demo-projects/gui/translation	Translation Demo	4.7		
+third_party/godot-demo-projects/gui/ui_mirroring	UI Mirroring Demo	4.7		
+third_party/godot-demo-projects/loading/autoload	Autoload (Singletons)	4.7	global	This demo shows how to use autoloads to change between scenes.
+third_party/godot-demo-projects/loading/load_threaded	Threaded Loading	4.7		This demo demonstrates how to use ResourceLoader for background loading.
+third_party/godot-demo-projects/loading/runtime_save_load	Run-time File Saving and Loading	4.7		
+third_party/godot-demo-projects/loading/scene_changer	Scene Changer	4.7		This uses functions in SceneTree to switch between two scenes.
+third_party/godot-demo-projects/loading/serialization	Saving and Loading (Serialization)	4.7		
+third_party/godot-demo-projects/loading/threads	Loading in a Thread	4.7		An example using a thread to load an image.
+third_party/godot-demo-projects/misc/2.5d	2.5D Demo with GDScript	4.7		
+third_party/godot-demo-projects/misc/custom_logging	Custom Logging	4.7	CustomLoggerUI	
+third_party/godot-demo-projects/misc/graphics_tablet_input	Graphics Tablet Input	4.7		A demo showing how to use graphics tablet input in Godot.
+third_party/godot-demo-projects/misc/hdr_output	HDR Output	4.7		This project showcases high dynamic range output in Godot, along with best practices.
+third_party/godot-demo-projects/misc/joypads	Joypads	4.7		A tool for testing joypad input.
+third_party/godot-demo-projects/misc/large_world_coordinates	Large World Coordinates	4.7		
+third_party/godot-demo-projects/misc/matrix_transform	Matrix Transform	4.7		
+third_party/godot-demo-projects/misc/multiple_windows	Multiple Windows Demo	4.7, GL Compatibility		A demo showing all Window classes and their use within the main window.
+third_party/godot-demo-projects/misc/noise_viewer	Noise Viewer	4.7		This is a sample project which allows the user to tweak different parameters of a FastNoiseLite texture.
+third_party/godot-demo-projects/misc/os_test	Operating System Testing	4.7		
+third_party/godot-demo-projects/misc/pause	Pause	4.7		A demo showing how a game made in Godot can be paused.
+third_party/godot-demo-projects/misc/window_management	Window Management	4.7		A demo showing the various window management features available through DisplayServer.
+third_party/godot-demo-projects/mobile/android_iap	godot billing demo	4.7, GL Compatibility		
+third_party/godot-demo-projects/mobile/multitouch_cubes	Multitouch Cubes Demo	4.7		Demo of multitouch input and different gestures using the touch API. This demo is meant to be used with a touch-enabled device such as a phone or tablet.
+third_party/godot-demo-projects/mobile/multitouch_view	Multitouch View	4.7	TouchHelper	Simple debugger for multitouch input. Shows red dots everywhere you press.
+third_party/godot-demo-projects/mobile/sensors	Mobile Sensors Demo	4.7		
+third_party/godot-demo-projects/mono/2.5d	2.5D Demo with C#	4.7, C#		
+third_party/godot-demo-projects/mono/android_iap	Android In-App Purchases with C#	4.7, C#, Mobile		
+third_party/godot-demo-projects/mono/dodge_the_creeps	Dodge the Creeps with C#	4.7, C#		
+third_party/godot-demo-projects/mono/multiplayer_pong	Pong Multiplayer with C#	4.7, C#		
+third_party/godot-demo-projects/mono/pong	Pong with C#	4.7, C#		
+third_party/godot-demo-projects/mono/squash_the_creeps	Squash the Creeps (3D) with C#	4.7, C#, Forward Plus	MusicPlayer	
+third_party/godot-demo-projects/networking/multiplayer_bomber	Multiplayer Bomber	4.7	gamestate	
+third_party/godot-demo-projects/networking/multiplayer_pong	Pong Multiplayer	4.7		
+third_party/godot-demo-projects/networking/webrtc_minimal	WebRTC Minimal Connection	4.7	Signaling	This is a minimal sample of using WebRTC connections to connect two peers to each other.
+third_party/godot-demo-projects/networking/webrtc_signaling	WebRTC Signaling Example	4.7		
+third_party/godot-demo-projects/networking/websocket_chat	WebSocket Chat Demo	4.7		This is a demo of a simple chat implemented using WebSockets, showing both how to host a websocket server from Godot and how to connect to it.
+third_party/godot-demo-projects/networking/websocket_minimal	WebSocket Minimal Demo	4.7		This is a minimal sample of connecting two peers to each other using WebSockets.
+third_party/godot-demo-projects/networking/websocket_multiplayer	WebSocket Multiplayer Demo	4.7		This is a sample showing how the use WebSockets along with the Multiplayer API in Godot.
+third_party/godot-demo-projects/plugins	Plugin Demos	4.7		
+third_party/godot-demo-projects/viewport/2d_in_3d	2D in 3D	4.7		A demo showing how a 2D scene can be shown within a 3D one using viewports.
+third_party/godot-demo-projects/viewport/3d_in_2d	3D in 2D	4.7		A demo showing how a 3D scene can be shown within a 2D one using viewports.
+third_party/godot-demo-projects/viewport/3d_scaling	3D SubViewport Scaling	4.7		
+third_party/godot-demo-projects/viewport/dynamic_split_screen	Dynamic Split Screen	4.7		
+third_party/godot-demo-projects/viewport/gui_in_3d	GUI in 3D	4.7		
+third_party/godot-demo-projects/viewport/screen_capture	Screen Capture	4.7		An example showing how to take screenshots of the screen.
+third_party/godot-demo-projects/viewport/split_screen_input	Split Screen Input	4.7		
+third_party/godot-demo-projects/xr/mobile_vr_interface_demo	Mobile VR Stereo Interface Demo	4.7, Forward Plus		
+third_party/godot-demo-projects/xr/openxr_binding_modifier_demo	OpenXR Binding Modifiers Demo	4.7, GL Compatibility		
+third_party/godot-demo-projects/xr/openxr_character_centric_movement	OpenXR Character Centric Movement	4.7, GL Compatibility		
+third_party/godot-demo-projects/xr/openxr_composition_layers	OpenXR Composition Layers	4.7, GL Compatibility		
+third_party/godot-demo-projects/xr/openxr_hand_tracking_demo	OpenXR Hand Tracking Demo	4.7, GL Compatibility		
+third_party/godot-demo-projects/xr/openxr_origin_centric_movement	OpenXR Origin Centric Movement	4.7, GL Compatibility		
+third_party/godot-demo-projects/xr/openxr_passthrough	OpenXR Passthrough demo	4.7, GL Compatibility		
+third_party/godot-demo-projects/xr/openxr_render_models	OpenXR Render Models	4.7, GL Compatibility		
+third_party/godot-demo-projects/xr/openxr_spectator_view	Openxr Spectator View Demo	4.7, Mobile		
+third_party/godot-demo-projects/xr/webxr	WebXR demo	4.7, GL Compatibility		
+third_party/godot-open-rpg	OpenRPG	4.6, GL Compatibility	Camera,CombatEvents,FieldEvents,Gameboard,GamepieceRegistry,Music,Player,Transition,Dialogic	

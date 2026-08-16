@@ -1,50 +1,61 @@
-name: game-ci
+name: library-ci
+
+# The game project was removed along with the abandoned ACCRETE concept, so there is
+# no Godot project to import yet. What this repository ships right now is a reference
+# library, and the thing that can rot silently is the generated indexes drifting from
+# the files they describe. This job checks exactly that.
+#
+# When a new game project lands, add a job here that runs the engine headlessly:
+#   godot --headless --path <project> --import
+#   godot --headless --path <project> <main scene> --quit-after 300
+# and fails on "SCRIPT ERROR|Parse Error|ERROR:" (ignoring vulkan/opengl/alsa noise).
 
 on:
   push:
     paths:
-      - "game/**"
+      - "library/**"
+      - "third_party/**"
+      - "tools/**"
       - ".github/workflows/godot-ci.yml"
   pull_request:
     paths:
-      - "game/**"
+      - "library/**"
+      - "third_party/**"
+      - "tools/**"
       - ".github/workflows/godot-ci.yml"
 
 jobs:
-  validate:
+  indexes-current:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache Godot
-        id: cache-godot
-        uses: actions/cache@v4
+      - uses: actions/setup-python@v5
         with:
-          path: ~/godot
-          key: godot-4.7.1-stable-linux
+          python-version: "3.12"
 
-      - name: Download Godot 4.7.1
-        if: steps.cache-godot.outputs.cache-hit != 'true'
+      - name: Regenerate the API index
+        run: python3 tools/build_api_index.py
+
+      - name: Regenerate the code index
+        run: python3 tools/build_code_index.py
+
+      - name: Fail if the committed indexes are stale
         run: |
-          mkdir -p ~/godot && cd ~/godot
-          curl -sSL -o godot.zip "https://github.com/godotengine/godot/releases/download/4.7.1-stable/Godot_v4.7.1-stable_linux.x86_64.zip"
-          unzip -o godot.zip
-          mv Godot_v4.7.1-stable_linux.x86_64 godot
-          chmod +x godot
-
-      - name: Import project
-        run: ~/godot/godot --headless --path game --import 2>&1 | tee import.log
-
-      - name: Boot both scenes headless
-        run: |
-          ~/godot/godot --headless --path game res://scenes/main_menu.tscn --quit-after 300 2>&1 | tee boot.log
-          ~/godot/godot --headless --path game res://scenes/run.tscn --quit-after 300 2>&1 | tee -a boot.log
-
-      - name: Fail on script errors
-        run: |
-          if grep -iE "SCRIPT ERROR|Parse Error|ERROR:" import.log boot.log | grep -viE "vulkan|opengl|xdg|alsa|pulse|audio|dummy"; then
-            echo "Engine reported errors (above)."
+          if ! git diff --quiet -- library/; then
+            echo "Generated indexes are out of date. Run these locally and commit the result:"
+            echo "  python3 tools/build_api_index.py"
+            echo "  python3 tools/build_code_index.py"
+            git diff --stat -- library/
             exit 1
           fi
-          echo "Clean: no script errors."
+          echo "Indexes match the tree."
+
+      - name: Validate the resource catalog
+        run: |
+          if [ -f library/catalog.json ]; then
+            python3 tools/build_resource_index.py --check
+          else
+            echo "No library/catalog.json yet — skipping catalog validation."
+          fi

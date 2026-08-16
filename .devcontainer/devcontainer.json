@@ -1,0 +1,73 @@
+{
+  "name": "Godot 4.7 desktop-game dev",
+
+  // Plain Ubuntu rather than a Godot-specific image: Godot ships as a single binary we
+  // pin ourselves in tools/setup_environment.sh, so the engine version lives in one
+  // place instead of being hidden in an image tag.
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+
+  "features": {
+    // The index and validation tooling under tools/ is Python.
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12",
+      "installTools": false
+    },
+    // A lightweight desktop reachable in the browser on port 6080. This is what lets you
+    // open the actual Godot editor from a Codespace. It is slow under software rendering
+    // (see docs/CODESPACES.md) but it is the difference between inspecting a scene and
+    // not being able to. Remove this feature if you only ever work headlessly.
+    "ghcr.io/devcontainers/features/desktop-lite:1": {
+      "password": "godot",
+      "webPort": "6080",
+      "vncPort": "5901"
+    }
+  },
+
+  // Godot itself, Xvfb, the software Vulkan driver and the GDScript linter. Runs once at
+  // container creation, so a prebuild bakes all of it in and a new Codespace starts ready.
+  "onCreateCommand": "bash tools/setup_environment.sh",
+
+  // Cheap re-verify on every start; prints what the machine can and cannot do.
+  "postStartCommand": "bash tools/setup_environment.sh --verify",
+
+  "forwardPorts": [6080],
+  "portsAttributes": {
+    "6080": {
+      "label": "Godot editor (noVNC)",
+      "onAutoForward": "silent"
+    }
+  },
+
+  // The engine binary is cached here; keeping it on a volume avoids re-downloading
+  // 76 MB every time the container is rebuilt.
+  "mounts": [
+    "source=godot-bin-cache,target=/home/vscode/.cache/godot-bin,type=volume"
+  ],
+  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.cache/godot-bin || true",
+
+  // Godot is CPU-bound here because everything rasterizes in software.
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "geequlim.godot-tools",
+        "alfish.godot-files",
+        "ms-python.python"
+      ],
+      "settings": {
+        "files.associations": {
+          "*.gd": "gdscript",
+          "*.gdshader": "gdshader"
+        },
+        "godotTools.editorPath.godot4": "/home/vscode/.cache/godot-bin/Godot_v4.7.1-stable_linux.x86_64"
+      }
+    }
+  },
+
+  "remoteUser": "vscode"
+}

@@ -1,9 +1,15 @@
 # Godot Code Survey — Deep Dive of Everything Vendored
 
 A 13-agent survey of every project under `third_party/`: what each one
-demonstrates, its most instructive files, and what we can concretely reuse
-for building a polished 2D arcade game — plus a full license audit.
-Engine used for validation: Godot 4.7.1-stable (headless imports).
+demonstrates, its most instructive files, and what we can concretely reuse —
+plus a full license audit. Engine used for validation: Godot 4.7.1-stable
+(headless imports).
+
+> **Read the "Reuse for our game" lines with a pinch of salt.** They were written
+> when the plan was a 2D arcade/incremental game that has since been abandoned, so
+> they judge relevance against a concept we are no longer building. Everything else
+> here — what each project contains, its key files, and the license audit — is
+> still accurate and still describes the current `third_party/` tree.
 
 Generated 2026-08-07 from the vendored snapshots recorded in `THIRD_PARTY_LICENSES.md`.
 
