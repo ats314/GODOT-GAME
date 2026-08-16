@@ -103,14 +103,18 @@ def collect_nodes(dataset, ept, box, max_depth):
 
 
 def main():
+    global CELL_M
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", default="NY_NewYorkCity")
     ap.add_argument("--lat", type=float, default=40.7530)
     ap.add_argument("--lon", type=float, default=-73.9860)
     ap.add_argument("--depth", type=int, default=MAX_DEPTH)
+    ap.add_argument("--cell", type=float, default=CELL_M,
+                    help="real metres per cell; 4 m covers 1 km, 32 m covers 8 km")
     ap.add_argument("--out", default="lidar-city.png")
     ap.add_argument("--meta", default=None)
     args = ap.parse_args()
+    CELL_M = args.cell
 
     import laspy
     from PIL import Image
