@@ -74,6 +74,35 @@ PLUTO tax-lot and zoning data, which this environment cannot reach. Until then
 the residual is a map of what the economic model does not know, and the
 suspicion that most of it is law.
 
+## Two cities, same method, tenfold difference
+
+The model was then fitted to San Francisco with nothing changed but the tiles.
+
+| | Manhattan | San Francisco |
+|---|---|---|
+| fit R² at 8 km | **0.333** | **0.031** |
+| transferred R² at 1 km | −0.105 | −0.001 |
+| places in the fit tile | 138,034 | 42,247 |
+| mean building height | 59 m | 30 m |
+| dominant coefficient | log activity **+0.35** | log centrality **+0.27** |
+
+**Access and activity explain a third of Manhattan's skyline and three percent
+of San Francisco's.** The same predictors, the same code, the same sensor.
+
+That is not a failure of the San Francisco fit; it is a statement about San
+Francisco. Its built form is far less economically determined — height limits,
+neighbourhood downzoning and a small downtown core mean the market is not the
+thing setting building heights across most of the city. Manhattan's activity
+coefficient is the strongest term; San Francisco's is indistinguishable from
+zero (−0.004), and what little signal exists is plain distance to the centre.
+
+One honest consequence for the demo: when the model is this weak, the residual
+readout degenerates toward the height readout, because subtracting a nearly
+constant prediction leaves nearly the original surface. The RESIDUAL view is
+meaningful in Manhattan and close to decorative in San Francisco. The toast
+prints the R² when you switch to it so the difference is visible rather than
+implied.
+
 ## Reproducing
 
 ```bash
