@@ -244,6 +244,43 @@ python3 tools/bake_lidar_city.py --lat 37.7940 --lon -122.3960 \
 2,277 datasets are available; the index lives in the `usgs-lidar` boundaries
 GeoJSON.
 
+### Readouts — press `X` (or the VIEW button)
+
+Colour normally encodes height. It can encode something else measured about the
+same cell instead, which turns the city into a chart you are standing inside
+without it ceasing to be a place.
+
+| readout | what colour means |
+|---|---|
+| **HEIGHT** | height, ranked within the tile |
+| **RESIDUAL** | measured height minus what access and activity predict. **Red = shorter than the economics alone would put here. Blue = taller.** |
+| **ACTIVITY** | the point-of-interest potential the prediction was built from |
+| **TERRAIN** | ground elevation, which the height field normally hides |
+
+The residual is the interesting one. Over Midtown, 24,585 cells come out shorter
+than predicted and 13,808 taller. Where it runs red, something that is not
+economics is holding the building down — a zoning envelope, a landmark
+designation, air rights already sold, a lot nobody could assemble. See
+`docs/CITY_MODEL_FINDINGS.md` for how far that model can and cannot be trusted
+(R² = 0.333 at 8 km, **negative** transferred to 1 km).
+
+### Vegetation, from the beam and not from a guess
+
+Earlier bakes reported zero vegetation because this dataset barely uses the
+classification channel. Return structure works instead: a beam that comes back
+twice went through something, and on a roof the only thing it goes through is
+foliage. Measured over Midtown with silhouette edges excluded, streets return
+multiple echoes 0.7% of the time and roofs 5-16%.
+
+Two other features were measured and **rejected**, which is worth recording:
+
+- **roughness** — street 0.41 vs roofs 0.47-0.50. No signal. A roof is flat and
+  4 m cells are larger than roof texture.
+- **intensity** — street 46 vs roofs 60-70, 0.48 sigma. Real but weak; it only
+  nudges facade style, it does not decide it.
+
+Manhattan finds 3,499 vegetated cells and San Francisco 7,922.
+
 ---
 
 MIT licensed, like everything outside `third_party/`.
