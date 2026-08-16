@@ -51,6 +51,8 @@
   #go{ font-family:var(--mono); font-size:13px; letter-spacing:.3em; color:#00121a; background:var(--fg);
        border:0; padding:13px 26px; cursor:pointer; }
   #go:active{ transform:translateY(1px); }
+  #go.ghost, .ghost{ background:transparent; color:var(--fg); border:1px solid rgba(140,240,255,.5); }
+  #drop{ font-size:10.5px; color:var(--dim); letter-spacing:.08em; }
   #legend{ font-size:10.5px; color:var(--dim); line-height:1.8; text-align:center; letter-spacing:.06em; }
   #legend b{ color:var(--fg); }
   #err{ position:fixed; inset:0; z-index:40; display:none; padding:26px; background:#000; color:#ff6a8c;
@@ -96,7 +98,11 @@
 ▒██░   ▓██░░ ████▓▒░▒ ▓███▀ ░  ▒██▒ ░ ░██░▒██████▒▒   ░██▓ ▒██▒
 ░ ▒░   ▒ ▒ ░ ▒░▒░▒░ ░ ░▒ ▒  ░  ▒ ░░   ░▓  ▒ ▒▓▒ ▒ ░   ░ ▒▓ ░▒▓░</pre>
   <div id="tag">A W A L K A B L E &nbsp; A S C I I &nbsp; M E G A C I T Y</div>
-  <button id="go">ENTER THE GRID</button>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+    <button id="go">ENTER THE GRID</button>
+    <button id="goSrc" class="ghost">WALK THIS PAGE'S SOURCE</button>
+  </div>
+  <div id="drop">…or drop a source file or folder anywhere to walk your own code</div>
   <div id="legend">
     <b>WASD</b> move &nbsp;·&nbsp; <b>MOUSE</b> look &nbsp;·&nbsp; <b>SHIFT</b> run &nbsp;·&nbsp; <b>F</b> drone
     <br><b>V</b> switch alphabet &nbsp;·&nbsp; <b>C</b> copy frame as text &nbsp;·&nbsp; <b>R</b> new city
@@ -401,37 +407,233 @@ function makeCity(seed){
     if (hgt[i] === 0 && !(flags[i] & (FLAG.ROAD|FLAG.WATER|FLAG.PARK|FLAG.PLAZA))) tex[i*4+3] |= FLAG.PLAZA;
   }
 
-  /* --- spawn: the widest road near the centre with the longest clear run,
-         standing mid-carriageway and facing down its length --- */
-  const runLen = (x, y, dx, dy) => {
-    let n = 0;
-    while (n < 90 && (flags[idx(x + dx*(n+1), y + dy*(n+1))] & FLAG.ROAD)) n++;
-    return n;
-  };
-  const widthAt = (x, y, dx, dy) => {
-    let a = 0, b = 0;
-    while (a < 6 && (flags[idx(x - dx*(a+1), y - dy*(a+1))] & FLAG.ROAD)) a++;
-    while (b < 6 && (flags[idx(x + dx*(b+1), y + dy*(b+1))] & FLAG.ROAD)) b++;
-    return { w: a + b + 1, off: (b - a) / 2 };
-  };
-  let spawn = [lc + 8, lc + 8], spawnYaw = 0, bestScore = -1;
-  for (let y = lc - 34; y <= lc + 34; y++) for (let x = lc - 34; x <= lc + 34; x++){
-    const f = flags[idx(x,y)];
+  const sp = chooseSpawn(flags, lc, lc);
+
+  return { tex, meta: new Uint8Array(N * N * 4), hgt, flags, dist, cellUnit: null, units: null,
+           labels: [], districtNames: DISTRICTS.map(d => d.name), source: false,
+           title: 'SEED ' + (seed >>> 0).toString(16).toUpperCase().padStart(8, '0'),
+           seed, spawn: sp.spawn, spawnYaw: sp.yaw, canalZ };
+}
+
+/* ══════════════════════════ SOURCE CITY ═══════════════════════════════
+   The renderer does not care where the height field came from. This turns
+   text into the same 256x256 grid, so you can walk a file instead of a seed.
+
+     top-level block  → one building        blank lines → the streets between
+     lines of code    → height              comment ratio → lit windows
+     max nest depth   → footprint           hash(name)  → palette
+     file             → district            its name    → the neon sign on it
+
+   Blocks are laid out in source order, left to right and top to bottom, so
+   walking east along a row is reading down the file.
+   ═══════════════════════════════════════════════════════════════════════ */
+const CODE_EXT = /\.(js|mjs|cjs|ts|tsx|jsx|py|gd|c|h|cc|cpp|hpp|cs|java|go|rs|rb|php|swift|kt|lua|sh|bash|css|scss|less|html|htm|vue|svelte|md|json|ya?ml|toml|ini|cfg|sql|glsl|frag|vert|wgsl|hlsl|jl|ex|exs|erl|hs|ml|scala|dart|zig|nim|pl|tf)$/i;
+
+const NAME_STOP = new Set(('function const let var class def public private protected static export ' +
+  'default async await void func fn struct impl trait type interface extends implements return if ' +
+  'for while switch case import from package using namespace template enum signal val new ' +
+  'module require begin end do then elif else try catch finally with lambda self this').split(' '));
+
+function unitName(first){
+  const md = /^\s*#{1,6}\s+(.+?)\s*$/.exec(first);
+  if (md) return md[1].replace(/[`*_#]/g, '').slice(0, 22) || 'section';
+  const toks = first.match(/[A-Za-z_$][\w$]*/g) || [];
+  for (const t of toks) if (!NAME_STOP.has(t.toLowerCase())) return t.slice(0, 22);
+  return (toks[0] || 'block').slice(0, 22);
+}
+
+const COMMENT_RE = /^\s*(\/\/|\/\*|\*|#|--|;|<!--)/;
+
+// Split a file into top-level blocks. Language agnostic: a new block starts on
+// an unindented line that follows blank space, which is what a function, a
+// class, a CSS rule and a markdown section all look like from the outside.
+function parseUnits(text){
+  const lines = text.replace(/\r/g, '').split('\n');
+  const units = [];
+  let cur = null, gap = 0;
+  const indentOf = L => /^[\t ]*/.exec(L)[0].replace(/\t/g, '    ').length;
+  const push = () => { if (cur && cur.lines >= 2) units.push(cur); cur = null; };
+  const blank = { name:'block', first:'', lines:0, depth:0, chars:0, comments:0, gapAfter:1, exported:false };
+
+  for (let i = 0; i < lines.length; i++){
+    const L = lines[i];
+    if (L.trim() === ''){ gap++; continue; }
+    const ind = indentOf(L);
+    if (ind === 0 && (cur === null || gap > 0)){
+      if (cur) cur.gapAfter = gap;
+      push();
+      cur = Object.assign({}, blank, { name: unitName(L), first: L,
+              exported: /\b(export|public|module\.exports|window\.)/.test(L) });
+    }
+    if (!cur) cur = Object.assign({}, blank, { name: unitName(L), first: L });
+    cur.lines++;
+    cur.chars += L.length;
+    cur.depth = Math.max(cur.depth, ind);
+    if (COMMENT_RE.test(L)) cur.comments++;
+    gap = 0;
+  }
+  if (cur) cur.gapAfter = Math.max(gap, 1);
+  push();
+  return units;
+}
+
+function hashStr(str){
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h >>> 0;
+}
+
+/* ---- shared with the procedural city: stand mid-carriageway on the widest
+        road with the longest clear run, facing down its length ---- */
+function chooseSpawn(flagArr, cx, cz){
+  const ix = (x, y) => (((y % N) + N) % N) * N + (((x % N) + N) % N);
+  const runLen = (x, y, dx, dy) => { let n = 0;
+    while (n < 90 && (flagArr[ix(x + dx*(n+1), y + dy*(n+1))] & FLAG.ROAD)) n++; return n; };
+  const widthAt = (x, y, dx, dy) => { let a = 0, b = 0;
+    while (a < 6 && (flagArr[ix(x - dx*(a+1), y - dy*(a+1))] & FLAG.ROAD)) a++;
+    while (b < 6 && (flagArr[ix(x + dx*(b+1), y + dy*(b+1))] & FLAG.ROAD)) b++;
+    return { w: a + b + 1, off: (b - a) / 2 }; };
+  let spawn = [cx, cz], yaw = 0, best = -1;
+  for (let y = cz - 40; y <= cz + 40; y++) for (let x = cx - 40; x <= cx + 40; x++){
+    const f = flagArr[ix(x, y)];
     if (!(f & FLAG.ROAD)) continue;
-    const along = (f & FLAG.ROADZ) ? [0, 1] : [1, 0];       // ROADZ runs north-south
+    const along = (f & FLAG.ROADZ) ? [0, 1] : [1, 0];
     const perp  = (f & FLAG.ROADZ) ? [1, 0] : [0, 1];
     const fwdN = runLen(x, y, along[0], along[1]), bakN = runLen(x, y, -along[0], -along[1]);
-    const { w, off } = widthAt(x, y, perp[0], perp[1]);
-    const score = w * 26 + Math.max(fwdN, bakN) * 2 - Math.hypot(x - lc, y - lc) * 0.6;
-    if (score > bestScore){
-      bestScore = score;
-      spawn = [x + perp[0] * off, y + perp[1] * off];
+    const wd = widthAt(x, y, perp[0], perp[1]);
+    const score = wd.w * 26 + Math.max(fwdN, bakN) * 2 - Math.hypot(x - cx, y - cz) * 0.6;
+    if (score > best){
+      best = score;
+      spawn = [x + perp[0] * wd.off, y + perp[1] * wd.off];
       const dir = fwdN >= bakN ? 1 : -1;
-      spawnYaw = Math.atan2(along[0] * dir, -(along[1] * dir));   // yaw 0 looks toward -Z
+      yaw = Math.atan2(along[0] * dir, -(along[1] * dir));
+    }
+  }
+  return { spawn, yaw };
+}
+
+function cityFromSources(files){
+  const tex   = new Uint8Array(N * N * 4);
+  const meta  = new Uint8Array(N * N * 4);
+  const hgt   = new Uint8Array(N * N);
+  const flags = new Uint8Array(N * N);
+  const dist  = new Uint8Array(N * N);
+  const cellUnit = new Int32Array(N * N).fill(-1);
+  const ix = (x, y) => (((y % N) + N) % N) * N + (((x % N) + N) % N);
+
+  /* ---- parse ---- */
+  const districts = [];
+  for (const f of files){
+    const us = parseUnits(f.text);
+    if (us.length) districts.push({ path: f.path, units: us });
+  }
+  if (!districts.length) return null;
+  districts.sort((a, b) => a.path.localeCompare(b.path));
+
+  /* ---- shape each block, shelf-pack it inside its file ---- */
+  for (const d of districts){
+    for (const u of d.units){
+      u.path = d.path;
+      u.hb = clamp(Math.round(3 + u.lines * 2.0), 4, 250);
+      u.w  = clamp(1 + Math.floor(u.depth / 6), 1, 3);
+      u.d  = clamp(1 + Math.floor(u.chars / 1100), 1, 3);
+      u.cr = u.comments / Math.max(1, u.lines);
+    }
+    const area = d.units.reduce((a, u) => a + (u.w + 1) * (u.d + 1), 0);
+    const W = clamp(Math.round(Math.sqrt(area) * 1.5), 6, 46);
+    let x = 0, y = 0, rowD = 0;
+    for (const u of d.units){
+      if (x + u.w > W && x > 0){ x = 0; y += rowD + 2; rowD = 0; }
+      u.lx = x; u.ly = y;
+      x += u.w + clamp(u.gapAfter, 1, 4);        // blank lines become the street
+      rowD = Math.max(rowD, u.d);
+    }
+    d.w = W; d.h = y + rowD;
+  }
+
+  /* ---- shelf-pack the files, avenues between them ---- */
+  let px = 2, py = 2, shelf = 0;
+  for (const d of districts){
+    if (px + d.w > N - 3){ px = 2; py += shelf + 4; shelf = 0; }
+    if (py + d.h > N - 3) break;
+    d.ox = px; d.oy = py; d.placed = true;
+    px += d.w + 4; shelf = Math.max(shelf, d.h);
+  }
+
+  /* ---- rasterise ---- */
+  const allUnits = [], labels = [], districtNames = [];
+  let maxX = 8, maxY = 8;
+  for (const d of districts){
+    if (!d.placed) continue;
+    const di = Math.min(255, districtNames.length);
+    districtNames.push(d.path.replace(/^.*\//, '').toUpperCase().slice(0, 24));
+    maxX = Math.max(maxX, d.ox + d.w); maxY = Math.max(maxY, d.oy + d.h);
+    for (const u of d.units){
+      const nh = hashStr(u.name + d.path);
+      const pal = nh & 15;
+      let sty;
+      if (u.cr > 0.30)       sty = 7;      // well commented: a vertical garden
+      else if (u.depth >= 12) sty = 3;     // deeply nested: offset stacks
+      else if (u.lines > 60)  sty = 2;     // long: vertical fins
+      else if (u.cr > 0.12)   sty = 1;     // documented: ribbon glazing
+      else sty = ((nh >> 8) & 1) ? 5 : 0;
+      const dens = clamp(0.16 + u.cr * 1.5, 0.14, 0.80);
+      let fl = 0;
+      if (u.lines > 80) fl |= FLAG.BEACON;
+      if (u.exported)   fl |= FLAG.SIGNSTRIP;
+
+      const ui = allUnits.length;
+      allUnits.push(u);
+      let labelRow = -1;
+      if (labels.length < 240 && u.lines >= 4){ labelRow = labels.length; labels.push(u.name); }
+
+      for (let j = 0; j < u.d; j++) for (let i = 0; i < u.w; i++){
+        const cx = d.ox + u.lx + i, cz = d.oy + u.ly + j;
+        if (cx >= N - 1 || cz >= N - 1) continue;
+        const k = ix(cx, cz);
+        hgt[k] = u.hb; flags[k] = fl; dist[k] = di; cellUnit[k] = ui;
+        tex[k*4+1] = (pal & 15) | ((sty & 15) << 4);
+        tex[k*4+2] = Math.round(dens * 255);
+        if (labelRow >= 0 && i === 0 && j === u.d - 1){        // one signed face per block
+          meta[k*4+0] = labelRow & 255;
+          meta[k*4+1] = (labelRow >> 8) & 255;
+          meta[k*4+2] = Math.min(255, u.name.length);
+          meta[k*4+3] = 255;
+        }
+      }
     }
   }
 
-  return { tex, hgt, flags, dist, seed, spawn, spawnYaw, canalZ };
+  /* ---- everything left over is street; long empty runs become carriageways ---- */
+  for (let y = 0; y < N; y++){
+    let run = 0;
+    for (let x = 0; x <= N; x++){
+      if (x < N && hgt[ix(x,y)] === 0){ run++; continue; }
+      if (run >= 4) for (let i = x - run; i < x; i++) flags[ix(i,y)] |= FLAG.ROAD | FLAG.ROADX;
+      run = 0;
+    }
+  }
+  for (let x = 0; x < N; x++){
+    let run = 0;
+    for (let y = 0; y <= N; y++){
+      if (y < N && hgt[ix(x,y)] === 0){ run++; continue; }
+      if (run >= 4) for (let i = y - run; i < y; i++) flags[ix(x,i)] |= FLAG.ROAD | FLAG.ROADZ;
+      run = 0;
+    }
+  }
+  for (let k = 0; k < N * N; k++){
+    if (hgt[k] === 0 && !(flags[k] & FLAG.ROAD)) flags[k] |= FLAG.PLAZA;
+    tex[k*4+0] = hgt[k];
+    tex[k*4+3] = flags[k];
+  }
+
+  const sp = chooseSpawn(flags, Math.round(maxX / 2), Math.round(maxY / 2));
+  const totalLines = allUnits.reduce((a, u) => a + u.lines, 0);
+  return { tex, meta, hgt, flags, dist, cellUnit, units: allUnits, labels, districtNames,
+           seed: hashStr(files.map(f => f.path).join('|')), source: true,
+           title: (files.length === 1 ? files[0].path : files.length + ' FILES') +
+                  ' · ' + allUnits.length + ' BLOCKS · ' + totalLines + ' LINES',
+           spawn: sp.spawn, spawnYaw: sp.yaw };
 }
 
 /* ═════════════════════════════ WEBGL SETUP ════════════════════════════ */
@@ -486,7 +688,9 @@ in vec2 vUv;
 layout(location = 0) out vec4 oCol;
 layout(location = 1) out vec4 oInf;
 
-uniform sampler2D uCity;
+uniform sampler2D uCity, uMeta, uLabel;
+uniform vec2  uLabelStep;
+uniform int   uHasLabels;
 uniform vec3  uPal[16];
 uniform vec3  uCam;
 uniform vec2  uAng;
@@ -691,6 +895,32 @@ vec3 shadeCore(Hit hh, vec3 rd, out float emis, out int kind, out float wet, out
     float ao = mix(0.72, 1.0, smoothstep(0.0, 8.0, v));      // ambient occlusion at the base
     col *= ao;
     ink *= mix(0.86, 1.0, ao);
+
+    // a signed block runs its own name up the wall in neon
+    if (uHasLabels == 1 && sty != 6){
+      vec4 m = texture(uMeta, (floor((hh.p.xz - hh.n.xz * 0.5) / CS) + 0.5) / MAPN);
+      if (m.a > 0.5){
+        // letters are a fixed world height so they stay readable; only the
+        // tall blocks have room to spell their whole name
+        const float CH = 4.6;
+        float row   = m.r * 255.0 + m.g * 255.0 * 256.0;
+        float avail = max(hh.h - 2.0, CH);
+        float baseY = min(5.0, avail * 0.12);
+        float nch   = min(max(m.b * 255.0, 1.0), floor((avail - baseY) / CH));
+        float fi    = (baseY + nch * CH - v) / CH;
+        float cu    = fract(u / CS);
+        if (fi >= 0.0 && fi < nch && cu > 0.12 && cu < 0.88){
+          vec2 luv = vec2((floor(fi) + (cu - 0.12) / 0.76) * uLabelStep.x,
+                          (row + fract(fi)) * uLabelStep.y);
+          float g = texture(uLabel, luv).r;
+          vec3 sc = uPal[(pal + 4) & 15];
+          col  = mix(col, sc * 3.0, g);
+          emis = max(emis, g * 2.0);
+          ink  = max(ink, g * 0.98);
+          if (g > 0.35) kind = K_SIGN;
+        }
+      }
+    }
 
   } else if (hh.face == 2){
     /* ------------------- rooftop ------------------- */
@@ -1028,16 +1258,48 @@ function mkTex(w, h, filter, wrap, internal, format, type, data){
   return t;
 }
 
-// city texture
-const cityTex = gl.createTexture();
-function uploadCity(city){
-  gl.bindTexture(gl.TEXTURE_2D, cityTex);
+// city texture, plus a parallel plane saying which cell carries a sign
+const cityTex = gl.createTexture(), metaTex = gl.createTexture(), labelTex = gl.createTexture();
+const LBL_CW = 8, LBL_RH = 14, LBL_MAXC = 24;
+let labelStep = [1, 1], hasLabels = 0;
+
+function uploadGrid(tex, data){
+  gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, city.tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+}
+// every block name rasterised into one row, so the shader can run it up a facade
+function buildLabels(labels){
+  hasLabels = labels && labels.length ? 1 : 0;
+  const rows = Math.max(1, labels ? labels.length : 1);
+  const c = document.createElement('canvas');
+  c.width = LBL_CW * LBL_MAXC; c.height = LBL_RH * rows;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0, 0, c.width, c.height);
+  x.font = '700 ' + (LBL_RH * 0.82).toFixed(1) + 'px ' + getComputedStyle(document.body).getPropertyValue('--mono');
+  x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff';
+  for (let r = 0; r < rows; r++){
+    const name = (labels && labels[r] ? labels[r] : '').slice(0, LBL_MAXC);
+    for (let i = 0; i < name.length; i++)
+      x.fillText(name[i], i * LBL_CW + LBL_CW / 2, r * LBL_RH + LBL_RH / 2);
+  }
+  gl.bindTexture(gl.TEXTURE_2D, labelTex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, c);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  labelStep = [LBL_CW / c.width, LBL_RH / c.height];
+}
+function uploadCity(city){
+  uploadGrid(cityTex, city.tex);
+  uploadGrid(metaTex, city.meta);
+  buildLabels(city.labels);
 }
 
 // glyph ramp LUT: 16 levels x 16 kinds (row 15 holds the four edge glyphs)
@@ -1188,7 +1450,21 @@ function flagsAtWorld(wx, wz){
 }
 function districtAtWorld(wx, wz){
   const cx = wrapCell(Math.floor(wx / CELLSZ)), cz = wrapCell(Math.floor(wz / CELLSZ));
-  return DISTRICTS[CITY.dist[cz * N + cx]].name;
+  return CITY.districtNames[CITY.dist[cz * N + cx]] || '\u2014';
+}
+// what the player is looking at: walk the grid along the view ray and report
+// the first block we run into
+function unitAhead(){
+  if (!CITY.cellUnit) return null;
+  const dx = Math.sin(player.yaw), dz = -Math.cos(player.yaw);
+  let x = player.x, z = player.z;
+  for (let i = 0; i < 90; i++){
+    x += dx * 1.6; z += dz * 1.6;
+    const cx = wrapCell(Math.floor(x / CELLSZ)), cz = wrapCell(Math.floor(z / CELLSZ));
+    const u = CITY.cellUnit[cz * N + cx];
+    if (u >= 0) return CITY.units[u];
+  }
+  return null;
 }
 function blocked(wx, wz){
   return heightAtWorld(wx, wz) > 0.1 || (flagsAtWorld(wx, wz) & FLAG.WATER) !== 0;
@@ -1211,6 +1487,8 @@ addEventListener('keydown', e => {
     case 'KeyR': newCity((Math.random() * 1e9) | 0); break;
     case 'KeyH': document.getElementById('boot').classList.toggle('off'); break;
     case 'KeyV': setAlphabet(ALPHA + 1); break;
+    case 'KeyO': filePick.click(); break;
+    case 'KeyU': loadSelfSource(); break;
     case 'KeyB': S.bloom = S.bloom > 0 ? 0 : 1.0; toast('BLOOM ' + (S.bloom ? 'ON' : 'OFF')); break;
     case 'KeyL': S.refl = S.refl ? 0 : 1; toast('REFLECTIONS ' + (S.refl ? 'ON' : 'OFF')); break;
     case 'KeyN': S.rain = S.rain > 0 ? 0 : 1; toast('RAIN ' + (S.rain ? 'ON' : 'OFF')); break;
@@ -1419,6 +1697,7 @@ function applyHud(){
   if (isTouch) document.getElementById('touch').style.opacity = v;
 }
 const COMPASS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const esc = t => String(t).replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]));
 
 let fpsEMA = 60;
 function updateHud(){
@@ -1426,8 +1705,8 @@ function updateHud(){
   const cmp = COMPASS[Math.round(brg / 22.5) % 16];
   tl.innerHTML =
     '<div class="t">NOCTIS-7</div>' +
-    '<div><span class="k">SEED</span> ' + CITY.seed.toString(16).toUpperCase().padStart(8,'0') +
-      ' <span class="k">GRID</span> ' + S.cols + 'x' + S.rows +
+    '<div><span class="d">' + CITY.title + '</span></div>' +
+    '<div><span class="k">GRID</span> ' + S.cols + 'x' + S.rows +
       ' <span class="k">SET</span> <span class="d">' + A().name + '</span>' +
       ' <span class="k">Q</span> ' + QNAME[S.quality] + (S.autoQuality ? '*' : '') +
       ' <span class="k">FPS</span> ' + fpsEMA.toFixed(0) + '</div>' +
@@ -1435,7 +1714,15 @@ function updateHud(){
       ' <span class="k">BRG</span> ' + brg.toFixed(0).padStart(3,'0') + '&deg; ' + cmp +
       ' <span class="k">VEL</span> ' + player.speed.toFixed(1) + '</div>' +
     '<div><span class="k">DISTRICT</span> <span class="d">' + districtAtWorld(player.x, player.z) + '</span>' +
-      (player.fly ? ' <span class="d">// DRONE</span>' : '') + '</div>';
+      (player.fly ? ' <span class="d">// DRONE</span>' : '') + '</div>' +
+    (() => {
+      const u = unitAhead();
+      if (!u) return '';
+      return '<div><span class="k">AHEAD</span> <span class="d">' + esc(u.name) + '</span>' +
+             ' <span class="k">' + u.lines + ' LINES · DEPTH ' + u.depth + ' · ' +
+             Math.round(u.cr * 100) + '% COMMENT</span>' +
+             ' <span class="k">' + esc(u.path) + '</span></div>';
+    })();
 }
 
 /* --- minimap: heights + streets around the player --- */
@@ -1506,15 +1793,8 @@ function writePng(){
 }
 
 function newCity(seed){
-  CITY = makeCity(seed);
-  uploadCity(CITY);
-  player.x = (CITY.spawn[0] + 0.5) * CELLSZ;
-  player.z = (CITY.spawn[1] + 0.5) * CELLSZ;
-  player.y = 1.78; player.vx = player.vz = 0; player.fly = false;
-  player.yaw = CITY.spawnYaw;
-  player.pitch = 0.13;
-  try { history.replaceState(null, '', '#s=' + seed.toString(16)); } catch (e) {}
-  toast('CITY ' + seed.toString(16).toUpperCase());
+  try { history.replaceState(null, '', '#s=' + (seed >>> 0).toString(16)); } catch (e) {}
+  installCity(makeCity(seed), 'CITY ' + (seed >>> 0).toString(16).toUpperCase());
 }
 
 /* ═════════════════════════════ RENDER ═════════════════════════════════ */
@@ -1551,6 +1831,10 @@ function frame(now){
   gl.viewport(0, 0, sw, sh);
   gl.useProgram(P_SCENE.p);
   bindTex(0, cityTex, P_SCENE.u.uCity);
+  bindTex(3, metaTex, P_SCENE.u.uMeta);
+  bindTex(4, labelTex, P_SCENE.u.uLabel);
+  gl.uniform2f(P_SCENE.u.uLabelStep, labelStep[0], labelStep[1]);
+  gl.uniform1i(P_SCENE.u.uHasLabels, hasLabels);
   gl.uniform3fv(P_SCENE.u.uPal, PAL_FLAT);
   gl.uniform3f(P_SCENE.u.uCam, player.x, player.y, player.z);
   gl.uniform2f(P_SCENE.u.uAng, player.yaw, player.pitch);
@@ -1642,16 +1926,124 @@ function start(){
   bl.innerHTML =
     '<b>WASD</b> walk &nbsp; <b>MOUSE</b> look &nbsp; <b>SHIFT</b> run &nbsp; <b>F</b> drone<br>' +
     '<b>V</b> alphabet: ascii / teletext / quadrant / braille &nbsp; <b>[ ]</b> glyph size<br>' +
+    '<b>drop a file or folder</b> to walk its source &nbsp; <b>O</b> open &nbsp; <b>U</b> walk this page<br>' +
     '<b>C</b> copy frame as text &nbsp; <b>G</b> png &nbsp; <b>R</b> new city<br>' +
     '<b>M</b> sound &nbsp; <b>B</b> bloom &nbsp; <b>L</b> reflections &nbsp; <b>N</b> rain &nbsp; <b>P</b> hud &nbsp; <b>H</b> help';
   setTimeout(() => { if (S.hud) bl.style.opacity = '0.45'; }, 9000);
 }
 document.getElementById('go').addEventListener('click', start);
+document.getElementById('goSrc').addEventListener('click', () => { start(); loadSelfSource(); });
 addEventListener('keydown', e => { if (!S.running && (e.code === 'Enter' || e.code === 'Space')) start(); });
 
 let seed0 = (Math.random() * 1e9) | 0;
 const mh = /[#&]s=([0-9a-f]+)/i.exec(location.hash || '');
 if (mh) seed0 = parseInt(mh[1], 16) >>> 0;
+
+/* ═══════════════════════ SOURCE LOADERS ═══════════════════════════════ */
+const MAX_SRC_FILES = 48, MAX_SRC_BYTES = 260000;
+
+function installCity(city, note){
+  if (!city){ toast('NOTHING WALKABLE IN THAT'); return; }
+  CITY = city;
+  uploadCity(CITY);
+  player.x = (CITY.spawn[0] + 0.5) * CELLSZ;
+  player.z = (CITY.spawn[1] + 0.5) * CELLSZ;
+  player.y = 1.78; player.vx = player.vz = 0; player.fly = false;
+  player.yaw = CITY.spawnYaw; player.pitch = 0.13;
+  updateHud(); drawMap();
+  if (note) toast(note);
+}
+
+async function readEntry(entry, out, prefix){
+  if (out.length >= MAX_SRC_FILES) return;
+  if (entry.isFile){
+    if (!CODE_EXT.test(entry.name)) return;
+    const file = await new Promise(r => entry.file(r, () => r(null)));
+    if (!file || file.size > MAX_SRC_BYTES) return;
+    out.push({ path: prefix + entry.name, text: await file.text() });
+  } else if (entry.isDirectory){
+    if (/^(node_modules|\.git|dist|build|vendor|third_party)$/.test(entry.name)) return;
+    const rd = entry.createReader();
+    const kids = await new Promise(r => rd.readEntries(r, () => r([])));
+    for (const k of kids) await readEntry(k, out, prefix + entry.name + '/');
+  }
+}
+
+async function loadDropped(dt){
+  const out = [];
+  const items = dt.items ? [...dt.items] : [];
+  const entries = items.map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  if (entries.length){
+    for (const e of entries) await readEntry(e, out, '');
+  } else {
+    for (const f of [...dt.files]){
+      if (out.length >= MAX_SRC_FILES || !CODE_EXT.test(f.name) || f.size > MAX_SRC_BYTES) continue;
+      out.push({ path: f.name, text: await f.text() });
+    }
+  }
+  if (!out.length){ toast('NO SOURCE FILES FOUND'); return; }
+  toast('COMPILING ' + out.length + ' FILE' + (out.length > 1 ? 'S' : '') + '…');
+  installCity(cityFromSources(out), null);
+}
+
+// the self-portrait: walk the file that draws the city you are standing in
+async function loadSelfSource(){
+  try {
+    toast('READING OWN SOURCE…');
+    const r = await fetch(location.href.split('#')[0], { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status);
+    const text = await r.text();
+    installCity(cityFromSources([{ path: 'ascii-city/index.html', text }]), null);
+  } catch (e){
+    toast('BROWSER BLOCKED THE READ — DROP THE FILE INSTEAD');
+  }
+}
+
+async function loadRepo(owner, repo){
+  try {
+    toast('FETCHING ' + owner + '/' + repo + '…');
+    const api = 'https://api.github.com/repos/' + owner + '/' + repo;
+    const meta = await (await fetch(api)).json();
+    if (!meta || !meta.default_branch) throw new Error('repo');
+    const tree = await (await fetch(api + '/git/trees/' + meta.default_branch + '?recursive=1')).json();
+    const picks = (tree.tree || [])
+      .filter(t => t.type === 'blob' && CODE_EXT.test(t.path) && t.size > 200 && t.size < MAX_SRC_BYTES)
+      .filter(t => !/(^|\/)(node_modules|third_party|vendor|dist|build)\//.test(t.path))
+      .sort((a, b) => b.size - a.size)
+      .slice(0, MAX_SRC_FILES);
+    if (!picks.length) throw new Error('empty');
+    const base = 'https://raw.githubusercontent.com/' + owner + '/' + repo + '/' + meta.default_branch + '/';
+    const out = [];
+    let next = 0;
+    await Promise.all(Array.from({ length: 6 }, async () => {
+      while (next < picks.length){
+        const t = picks[next++];
+        try { const r = await fetch(base + t.path); if (r.ok) out.push({ path: t.path, text: await r.text() }); }
+        catch (e) { /* skip unreadable blobs */ }
+        toast('FETCHED ' + out.length + '/' + picks.length);
+      }
+    }));
+    installCity(cityFromSources(out), owner + '/' + repo);
+  } catch (e){
+    toast('COULD NOT READ THAT REPO');
+  }
+}
+
+addEventListener('dragover', e => { e.preventDefault(); }, false);
+addEventListener('drop', e => { e.preventDefault(); loadDropped(e.dataTransfer); }, false);
+
+const filePick = document.createElement('input');
+filePick.type = 'file'; filePick.multiple = true; filePick.style.display = 'none';
+document.body.appendChild(filePick);
+filePick.addEventListener('change', async () => {
+  const out = [];
+  for (const f of [...filePick.files]){
+    if (out.length >= MAX_SRC_FILES || f.size > MAX_SRC_BYTES) continue;
+    out.push({ path: f.name, text: await f.text() });
+  }
+  if (out.length) installCity(cityFromSources(out), null); else toast('NO SOURCE FILES');
+  filePick.value = '';
+});
 
 ALPHABETS.forEach(a => { a.ok = alphabetSupported(a); });
 ALPHABETS[0].ok = true;                              // ASCII always works
@@ -1659,6 +2051,8 @@ const RAIN_GLYPH = Math.max(0, ALPHABETS[0].glyphs.indexOf('/'));
 
 resize();
 newCity(seed0);
+const mr = /[#&]repo=([\w.-]+)\/([\w.-]+)/i.exec(location.hash || '');
+if (mr) loadRepo(mr[1], mr[2]);
 addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(resize, 120); });
 applyHud();
 updateHud();

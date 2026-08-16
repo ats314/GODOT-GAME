@@ -121,4 +121,50 @@ what is on screen. It is genuinely characters all the way down.
 
 ---
 
+## SOURCE CITY — drop a file on it and walk that
+
+The renderer doesn't care where the height field came from, so text can be the
+input too. Drop a source file or a folder anywhere on the page (or press `O`,
+or `U` to read this page's own source, or load `#repo=owner/name` for a public
+GitHub repository) and the city becomes a rendering of that code.
+
+| in the text | in the city |
+|---|---|
+| top-level block (function, class, CSS rule, markdown section) | one building |
+| lines in it | **height** — your longest block is the megaspire |
+| max indent depth | footprint |
+| comment ratio | lit windows — and above 30%, the facade becomes a vertical garden |
+| hash of its name | palette, so the same block is the same colour every time |
+| exported / public | a neon strip up the facade |
+| over 80 lines | a red aircraft beacon on the roof |
+| file | district |
+| **blank lines between blocks** | **the width of the street between them** |
+| the block's name | the sign running up its wall |
+
+Blocks are placed in source order, left to right and top to bottom, so walking
+east along a row is reading down the file. Parsing is deliberately
+language-agnostic — a new block starts on an unindented line that follows blank
+space, which is what a function, a class, a CSS rule and a markdown heading all
+look like from the outside. It works on JS, Python, GDScript, C, CSS, Markdown
+and most things shaped like them.
+
+The HUD names whatever you are looking at: point at a tower and it reads back
+`shadeCore · 74 lines · depth 6 · 12% comment · ascii-city/index.html`.
+
+Signage is rasterised into a label atlas — one row per block name — and the
+scene shader runs it up the wall at a fixed 4.6 world units per letter. Letters
+are therefore only a few character cells tall, which means **you often have to
+switch to braille (`V`) to actually read a sign**. That is the fidelity
+trade-off from the alphabet table, made load-bearing.
+
+### The self-portrait
+
+Press `U` on the hosted page and NOCTIS-7 reads its own source. You get 84
+blocks and ~1,900 lines: a street made of its own blank lines, `frame` at 100
+lines, `cityFromSources` at 115, `makeCity` at 152 — and the megaspire visible
+from anywhere in the city turns out to be the 210-line block of shading code
+that draws it.
+
+---
+
 MIT licensed, like everything outside `third_party/`.

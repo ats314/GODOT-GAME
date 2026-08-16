@@ -52,8 +52,10 @@ Published to GitHub Pages from the repository root:
 
 - **`/ascii-city/`** — **NOCTIS-7**, a walkable ASCII megacity. A procedural
   cyberpunk city raycast once per character cell and printed as text, with a
-  live switch between ASCII, teletext blocks, quadrants and braille. One
-  self-contained HTML file, no assets or dependencies. See
+  live switch between ASCII, teletext blocks, quadrants and braille. Drop a
+  source file or folder on it and it builds the city out of *that* instead:
+  blocks become buildings, line counts become heights, blank lines become the
+  streets. One self-contained HTML file, no assets or dependencies. See
   `ascii-city/README.md`.
 - **`/play/`** — the ACCRETE web build.
 
