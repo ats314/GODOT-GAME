@@ -147,6 +147,10 @@ def main():
     n_veg = np.zeros((GRID, GRID), dtype=np.int64)
     n_wat = np.zeros((GRID, GRID), dtype=np.int64)
     n_gnd = np.zeros((GRID, GRID), dtype=np.int64)
+    # material evidence: near-IR reflectance and canopy penetration
+    s_int = np.zeros((GRID, GRID), dtype=np.float64)
+    s_int2 = np.zeros((GRID, GRID), dtype=np.float64)
+    n_multi = np.zeros((GRID, GRID), dtype=np.int64)
     cls_hist = {}
 
     def ingest(item):
@@ -173,6 +177,13 @@ def main():
         flat = iy * GRID + ix
         np.maximum.at(dsm.reshape(-1), flat, z)
         np.add.at(n_pts.reshape(-1), flat, 1)
+        inten = np.asarray(f.intensity)[keep].astype(np.float64)
+        np.add.at(s_int.reshape(-1), flat, inten)
+        np.add.at(s_int2.reshape(-1), flat, inten * inten)
+        nret = np.asarray(f.number_of_returns)[keep]
+        mm = nret > 1
+        if mm.any():
+            np.add.at(n_multi.reshape(-1), flat[mm], 1)
         for mask, acc in ((cls == C_BUILDING, n_bld),
                           ((cls == C_HIGHVEG) | (cls == C_MEDVEG), n_veg),
                           (cls == C_WATER, n_wat)):
@@ -245,7 +256,25 @@ def main():
     if not classified:
         print("classification channel is sparse; deriving from geometry alone")
     water = (n_wat > n_pts * 0.5) & (n_wat > 0)
-    veg = (n_veg > n_bld) & (n_veg > n_pts * 0.25) & (height > 2)
+
+    # ---- material evidence, and what it is actually worth ----------------
+    # Measured on Midtown with silhouette edges excluded:
+    #   roughness   street 0.41 vs roofs 0.47-0.50  -> no signal at 4 m cells.
+    #               A roof is flat; cell size is larger than roof texture.
+    #   intensity   street 46 vs roofs 60-70, 0.48 sigma. Weak but consistent:
+    #               asphalt is dark in near-IR, membrane and gravel are not.
+    #   multi-ret   street 0.7% vs roofs 5-16%. This one works. A beam that
+    #               returns twice went through something, and the only thing on
+    #               a roof it goes through is foliage.
+    # So this is a vegetation detector, not a materials classifier, and it is
+    # labelled as such rather than dressed up.
+    mean_int = np.where(valid, s_int / np.maximum(n_pts, 1), 0.0)
+    multi = np.where(valid, n_multi / np.maximum(n_pts, 1), 0.0)
+    int_med = float(np.median(mean_int[valid])) if valid.any() else 0.0
+
+    veg = valid & (multi > 0.35) & (height > 2.0)
+    if classified:
+        veg |= (n_veg > n_bld) & (n_veg > n_pts * 0.25) & (height > 2)
     building = height > 6.0
 
     # street level: flat, dry, and actually surveyed
@@ -263,8 +292,11 @@ def main():
     pal = np.where(veg, 3, pal)
 
     style = np.full((GRID, GRID), 0, dtype=np.uint8)
-    style = np.where(veg, 7, style)                       # vegetation -> foliage facade
+    # brighter-than-median near-IR on a tall mass reads as glass and metal
+    style = np.where((height > 60) & (mean_int > int_med * 1.15), 1, style)
+    style = np.where((height > 6) & (height <= 60) & (mean_int < int_med * 0.85), 4, style)
     style = np.where(height > 120, 1, style)              # towers -> ribbon glazing
+    style = np.where(veg, 7, style)                       # vegetation wins outright
     tex[..., 1] = (pal & 15) | ((style & 15) << 4)
 
     dens = np.clip(0.22 + (height / 260.0), 0.15, 0.72)
@@ -300,6 +332,9 @@ def main():
         "street_cells": int(street.sum()), "veg_cells": int(veg.sum()),
         "terrain_relief_m": round(trange, 1), "terrain_step_m": round(tstep, 4),
         "ground_elev_min_m": round(tmin, 1),
+        "intensity_median": round(int_med, 1),
+        "multi_return_pct": round(100 * float(multi[valid].mean()), 2),
+        "veg_from_returns": int((valid & (multi > 0.35) & (height > 2)).sum()),
     }
     print(json.dumps(stats, indent=1))
     if args.meta:

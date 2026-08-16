@@ -177,6 +177,8 @@ def main():
     ap.add_argument("--eval-cell", type=float, default=4.0)
     ap.add_argument("--out", default="city-model.png")
     ap.add_argument("--report", default=None)
+    ap.add_argument("--append-to", default=None,
+                    help="walkable bake to append the model band onto")
     args = ap.parse_args()
 
     from PIL import Image
@@ -212,12 +214,26 @@ def main():
     print(f"unexplained variance: {(1-max(r2_eval,0))*100:.0f}% of the skyline")
 
     scale = max(1.0, float(np.percentile(np.abs(rs), 95)))
-    out = np.zeros((GRID, GRID, 4), dtype=np.uint8)
-    out[..., 0] = np.clip(128 + resid / scale * 127, 0, 255).astype(np.uint8)
-    out[..., 1] = np.clip(pred / HSTEP, 0, 255).astype(np.uint8)
-    out[..., 2] = np.clip(act / (act.max() + 1e-9) * 255, 0, 255).astype(np.uint8)
-    out[..., 3] = 255
-    Image.fromarray(out, "RGBA").save(args.out, optimize=True)
+    model = np.zeros((GRID, GRID, 4), dtype=np.uint8)
+    model[..., 0] = np.clip(128 + resid / scale * 127, 0, 255).astype(np.uint8)
+    model[..., 1] = np.clip(pred / HSTEP, 0, 255).astype(np.uint8)
+    model[..., 2] = np.clip(act / (act.max() + 1e-9) * 255, 0, 255).astype(np.uint8)
+    model[..., 3] = 255
+    Image.fromarray(model, "RGBA").save(args.out, optimize=True)
+
+    # Append the model as a fourth band on the walkable bake, so the renderer can
+    # switch what colour means without loading a second file.
+    if args.append_to:
+        base = np.asarray(Image.open(args.append_to))
+        bands = base.shape[0] // GRID
+        merged = np.zeros((GRID * 4, GRID, 4), dtype=np.uint8)
+        merged[:GRID * bands] = base[:GRID * bands]
+        merged[GRID * 3:, :, 0] = model[..., 0]      # residual, 128 = as predicted
+        merged[GRID * 3:, :, 1] = model[..., 1]      # predicted height
+        merged[GRID * 3:, :, 2] = model[..., 2]      # activity potential
+        merged[..., 3] = 255
+        Image.fromarray(merged, "RGBA").save(args.append_to, optimize=True)
+        print(f"appended model band to {args.append_to} ({bands} -> 4 bands)")
 
     rep = {
         "fit": {n: round(float(c), 4) for n, c in zip(names, coef)},
