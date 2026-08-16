@@ -13,3 +13,6 @@ export/
 Thumbs.db
 *.tmp
 *~
+# Python bytecode cache from tools/
+__pycache__/
+*.pyc
