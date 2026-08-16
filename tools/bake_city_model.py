@@ -37,7 +37,6 @@ import os
 
 import numpy as np
 
-GRID = 256
 HSTEP = 1.6
 RELEASE = "2026-07-22.0"
 MAJOR = {"motorway", "trunk", "primary", "secondary"}
@@ -56,7 +55,7 @@ def gaussian(a, sigma_cells):
     s = max(sigma_cells, 0.5)
     # numpy's 'same' returns max(len(signal), len(kernel)), so a kernel wider
     # than the grid silently grows the array instead of blurring it
-    k = min(int(s * 3) | 1, (GRID - 1) | 1)
+    k = min(int(s * 3) | 1, (a.shape[0] - 1) | 1)
     xs = np.arange(k) - k // 2
     g = np.exp(-xs ** 2 / (2 * s * s))
     g /= g.sum()
@@ -70,29 +69,32 @@ class Tile:
     def __init__(self, png, lat, lon, cell_m, ov, label=""):
         from PIL import Image
         img = np.asarray(Image.open(png))
-        self.h = img[:GRID, :, 0].astype(np.float64) * HSTEP
-        self.flags = img[GRID:GRID * 2, :, 0].astype(np.uint8)
+        # The tile declares its own grid size by its width, so a 512-cell tile
+        # covering 2 km can borrow predictors from a 256-cell fit tile.
+        G = self.g = img.shape[1]
+        self.h = img[:G, :, 0].astype(np.float64) * HSTEP
+        self.flags = img[G:G * 2, :, 0].astype(np.uint8)
         self.built = self.h > 6.0
         self.cell_m = cell_m
-        dlat = (GRID * cell_m / 2) / 111320.0
+        dlat = (G * cell_m / 2) / 111320.0
         dlon = dlat / math.cos(math.radians(lat))
         self.bbox = (lon - dlon, lat - dlat, lon + dlon, lat + dlat)
 
-        major = np.zeros((GRID, GRID))
-        poi = np.zeros((GRID, GRID))
+        major = np.zeros((G, G))
+        poi = np.zeros((G, G))
         self.n_seg = self.n_poi = 0
         quiet = lambda *a: None
 
         def cell(lo, la):
-            return ((lo - self.bbox[0]) / (self.bbox[2] - self.bbox[0]) * GRID,
-                    (la - self.bbox[1]) / (self.bbox[3] - self.bbox[1]) * GRID)
+            return ((lo - self.bbox[0]) / (self.bbox[2] - self.bbox[0]) * G,
+                    (la - self.bbox[1]) / (self.bbox[3] - self.bbox[1]) * G)
 
         def line(grid, x0, y0, x1, y1):
             n = int(max(abs(x1 - x0), abs(y1 - y0)) * 2) + 1
             for i in range(n + 1):
                 t = i / n
                 x, y = int(x0 + (x1 - x0) * t), int(y0 + (y1 - y0) * t)
-                if 0 <= x < GRID and 0 <= y < GRID:
+                if 0 <= x < G and 0 <= y < G:
                     grid[y, x] += 1.0
 
         from shapely import wkb
@@ -114,7 +116,7 @@ class Tile:
             for geo in t.to_pydict()["geometry"]:
                 g = wkb.loads(bytes(geo))
                 x, y = cell(g.x, g.y)
-                if 0 <= int(x) < GRID and 0 <= int(y) < GRID:
+                if 0 <= int(x) < G and 0 <= int(y) < G:
                     poi[int(y), int(x)] += 1.0
                     self.n_poi += 1
 
@@ -127,8 +129,8 @@ class Tile:
             w = poi[ys, xs]
             cy, cx = (ys * w).sum() / w.sum(), (xs * w).sum() / w.sum()
         else:
-            cy = cx = GRID / 2
-        Y, X = np.mgrid[0:GRID, 0:GRID]
+            cy = cx = G / 2
+        Y, X = np.mgrid[0:G, 0:G]
         self.centre = 1.0 / (1.0 + np.hypot(Y - cy, X - cx) * cell_m / 1000.0)
         print(f"{label}: {self.built.sum():,} building cells, {self.n_seg:,} major segments, "
               f"{self.n_poi:,} places, {cell_m:g} m cells")
@@ -147,15 +149,15 @@ class Tile:
         fine tile must borrow them from the wide fit rather than recompute a
         640 m blur inside a 1 km box, where it degenerates to a constant.
         """
-        lon = np.linspace(other.bbox[0], other.bbox[2], GRID)
-        lat = np.linspace(other.bbox[1], other.bbox[3], GRID)
-        gx = (lon - self.bbox[0]) / (self.bbox[2] - self.bbox[0]) * (GRID - 1)
-        gy = (lat - self.bbox[1]) / (self.bbox[3] - self.bbox[1]) * (GRID - 1)
-        gx = np.clip(gx, 0, GRID - 1)
-        gy = np.clip(gy, 0, GRID - 1)
+        lon = np.linspace(other.bbox[0], other.bbox[2], other.g)
+        lat = np.linspace(other.bbox[1], other.bbox[3], other.g)
+        gx = (lon - self.bbox[0]) / (self.bbox[2] - self.bbox[0]) * (self.g - 1)
+        gy = (lat - self.bbox[1]) / (self.bbox[3] - self.bbox[1]) * (self.g - 1)
+        gx = np.clip(gx, 0, self.g - 1)
+        gy = np.clip(gy, 0, self.g - 1)
         X, Y = np.meshgrid(gx, gy)
         x0, y0 = np.floor(X).astype(int), np.floor(Y).astype(int)
-        x1, y1 = np.minimum(x0 + 1, GRID - 1), np.minimum(y0 + 1, GRID - 1)
+        x1, y1 = np.minimum(x0 + 1, self.g - 1), np.minimum(y0 + 1, self.g - 1)
         fx, fy = X - x0, Y - y0
 
         def bilerp(a):
@@ -201,7 +203,7 @@ def main():
     # ---- evaluate at walking resolution, using the wide tile's fields ------
     act, cen, rds = fit.sample_into(ev)
     D = np.stack([np.log(act + 1e-6), np.log(cen + 1e-6),
-                  np.log(rds + 1e-6), np.ones((GRID, GRID))], axis=-1)
+                  np.log(rds + 1e-6), np.ones((ev.g, ev.g))], axis=-1)
     pred = np.clip(np.exp(D @ coef) - 1.0, 0, 400)
     resid = np.where(ev.built, ev.h - pred, 0.0)
     rs = resid[ev.built]
@@ -214,7 +216,7 @@ def main():
     print(f"unexplained variance: {(1-max(r2_eval,0))*100:.0f}% of the skyline")
 
     scale = max(1.0, float(np.percentile(np.abs(rs), 95)))
-    model = np.zeros((GRID, GRID, 4), dtype=np.uint8)
+    model = np.zeros((ev.g, ev.g, 4), dtype=np.uint8)
     model[..., 0] = np.clip(128 + resid / scale * 127, 0, 255).astype(np.uint8)
     model[..., 1] = np.clip(pred / HSTEP, 0, 255).astype(np.uint8)
     model[..., 2] = np.clip(act / (act.max() + 1e-9) * 255, 0, 255).astype(np.uint8)
@@ -225,12 +227,13 @@ def main():
     # switch what colour means without loading a second file.
     if args.append_to:
         base = np.asarray(Image.open(args.append_to))
-        bands = base.shape[0] // GRID
-        merged = np.zeros((GRID * 4, GRID, 4), dtype=np.uint8)
-        merged[:GRID * bands] = base[:GRID * bands]
-        merged[GRID * 3:, :, 0] = model[..., 0]      # residual, 128 = as predicted
-        merged[GRID * 3:, :, 1] = model[..., 1]      # predicted height
-        merged[GRID * 3:, :, 2] = model[..., 2]      # activity potential
+        G = ev.g
+        bands = base.shape[0] // G
+        merged = np.zeros((G * 4, G, 4), dtype=np.uint8)
+        merged[:G * bands] = base[:G * bands]
+        merged[G * 3:, :, 0] = model[..., 0]         # residual, 128 = as predicted
+        merged[G * 3:, :, 1] = model[..., 1]         # predicted height
+        merged[G * 3:, :, 2] = model[..., 2]         # activity potential
         merged[..., 3] = 255
         Image.fromarray(merged, "RGBA").save(args.append_to, optimize=True)
         print(f"appended model band to {args.append_to} ({bands} -> 4 bands)")
@@ -239,8 +242,8 @@ def main():
         "fit": {n: round(float(c), 4) for n, c in zip(names, coef)},
         "r2_fit_wide": round(r2_fit, 4),
         "r2_eval_fine": round(r2_eval, 4),
-        "fit_extent_m": GRID * args.fit_cell,
-        "eval_extent_m": GRID * args.eval_cell,
+        "fit_extent_m": fit.g * args.fit_cell,
+        "eval_extent_m": ev.g * args.eval_cell,
         "residual_m": {"mean": round(float(rs.mean()), 2), "sd": round(float(rs.std()), 2),
                        "p5": round(float(np.percentile(rs, 5)), 1),
                        "p95": round(float(np.percentile(rs, 95)), 1),

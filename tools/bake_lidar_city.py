@@ -278,7 +278,18 @@ def main():
     s_int = np.zeros((GRID, GRID), dtype=np.float64)
     s_int2 = np.zeros((GRID, GRID), dtype=np.float64)
     n_multi = np.zeros((GRID, GRID), dtype=np.int64)
+    # ...and the channels the first version of this tool threw away. Point
+    # density and multi-return separate road from other ground at 0.05 and 0.09
+    # sigma respectively — which is to say not at all — so a materials
+    # classifier needs more of the survey than intensity alone.
+    s_rgb = np.zeros((GRID, GRID, 3), dtype=np.float64)   # NYC carries colour
+    n_rgb = np.zeros((GRID, GRID), dtype=np.int64)
+    s_ang = np.zeros((GRID, GRID), dtype=np.float64)      # incidence angle
+    s_z2 = np.zeros((GRID, GRID), dtype=np.float64)       # vertical spread
+    s_z = np.zeros((GRID, GRID), dtype=np.float64)
+    n_first = np.zeros((GRID, GRID), dtype=np.int64)      # single-echo fraction
     cls_hist = {}
+    have_rgb = [False]
 
     def ingest(item):
         key, _ = item
@@ -311,6 +322,23 @@ def main():
         mm = nret > 1
         if mm.any():
             np.add.at(n_multi.reshape(-1), flat[mm], 1)
+        np.add.at(s_z.reshape(-1), flat, z)
+        np.add.at(s_z2.reshape(-1), flat, z * z)
+        single = nret == 1
+        if single.any():
+            np.add.at(n_first.reshape(-1), flat[single], 1)
+        # Intensity is uncalibrated: the same asphalt returns differently at
+        # nadir and at the edge of the swath, which is a good part of why it
+        # only reaches 0.58 sigma raw. Keep the angle so it can be regressed out.
+        np.add.at(s_ang.reshape(-1), flat,
+                  np.abs(np.asarray(f.scan_angle_rank)[keep].astype(np.float64)))
+        dims = set(f.point_format.dimension_names)
+        if {"red", "green", "blue"} <= dims:
+            have_rgb[0] = True
+            for i, ch in enumerate(("red", "green", "blue")):
+                np.add.at(s_rgb[..., i].reshape(-1), flat,
+                          np.asarray(getattr(f, ch))[keep].astype(np.float64))
+            np.add.at(n_rgb.reshape(-1), flat, 1)
         for mask, acc in ((cls == C_BUILDING, n_bld),
                           ((cls == C_HIGHVEG) | (cls == C_MEDVEG), n_veg),
                           (cls == C_WATER, n_wat)):
@@ -443,10 +471,31 @@ def main():
         print(f"terrain relief {trange:.1f} m after levelling water "
               f"({tstep:.3f} m per byte)")
 
+    # Per-cell features derived from the channels above, for the classifier.
+    npz = np.maximum(n_pts, 1)
+    rough = np.sqrt(np.maximum(s_z2 / npz - (s_z / npz) ** 2, 0.0))   # vertical spread
+    single = n_first / npz                                            # single-echo share
+    angle = s_ang / npz
+    rgb = s_rgb / np.maximum(n_rgb, 1)[..., None]
+    if have_rgb[0]:
+        mx = max(float(rgb.max()), 1.0)
+        rgb = rgb / mx                                                # 8- or 16-bit
+        lum = rgb @ np.array([0.299, 0.587, 0.114])
+        # green excess: the standard vegetation index when there is no NIR band
+        gex = np.clip(2 * rgb[..., 1] - rgb[..., 0] - rgb[..., 2], -1, 1)
+        print(f"colour present: median luminance {np.median(lum[valid]):.3f}, "
+              f"green excess {np.median(gex[valid]):+.3f}")
+    else:
+        lum = np.zeros((GRID, GRID))
+        gex = np.zeros((GRID, GRID))
+        print("no colour in this survey; classifier runs without it")
+
     if args.dump:
         np.savez_compressed(args.dump, n_pts=n_pts, dsm=np.where(valid, dsm, np.nan),
                             filled=filled, valid=valid, height=height, n_wat=n_wat,
-                            mean_int=mean_int, multi=multi, water=water)
+                            mean_int=mean_int, multi=multi, water=water, rough=rough,
+                            single=single, angle=angle, lum=lum, gex=gex, rgb=rgb,
+                            n_veg=n_veg, n_bld=n_bld, has_rgb=np.array(have_rgb))
         print(f"dumped per-cell fields to {args.dump}")
 
     veg = valid & (multi > 0.35) & (height > 2.0)
