@@ -169,4 +169,55 @@ that draws it.
 
 ---
 
+## MEASURED CITY — real Manhattan from lidar (press `K`)
+
+A third input to the same unchanged middle layer. A seed gives a plausible
+city; source code gives a legible one; a laser survey gives an actual one.
+
+The data is [USGS 3DEP](https://registry.opendata.aws/usgs-lidar/) — public
+domain, 4,755,025,996 points over New York City, served as Entwine Point Tiles
+from AWS Open Data. `tools/bake_lidar_city.py` walks the octree over a chosen
+extent, decodes the LAZ, and reduces it with one subtraction:
+
+```
+DSM (highest return per cell) - DTM (ground surface) = height above ground
+```
+
+which is exactly the height field the renderer already consumes. 4.3 million
+sampled points over 1024 m of Midtown collapse to a 100 KB image. **The points
+never reach the browser.**
+
+Sanity against the real place: median building 50 m, 90th percentile 94 m,
+66 cells above 300 m, and three at the 400 m ceiling — spire tips.
+
+Two things worth knowing about the data:
+
+- **NYC 3DEP is essentially unclassified** — 2.3 M unclassified points against
+  zero tagged as buildings. So buildings are derived from geometry, not from
+  the classification channel. What classification cannot do here is reject
+  noise, so a despike pass replaces any cell more than 45 m above its
+  neighbours' median; real towers are many contiguous cells, a bird is one.
+- **The grid is stored as a 256x512 fully opaque PNG**, the grid on top and the
+  flag plane underneath, rather than packing flags into alpha. Canvas backing
+  stores are premultiplied, so a small data byte in the alpha channel silently
+  destroys RGB. Verified byte-exact on round-trip.
+
+Colour carries height rather than appearance — the dataset does have RGB, but
+real colour pulls toward photoreal, and the display is meant to be a readout.
+
+Limits: the tile is 1024 m and the world wraps, so walking far enough repeats
+it. No water or vegetation in this extent.
+
+Bake a different place:
+
+```bash
+python3 tools/bake_lidar_city.py --lat 37.7940 --lon -122.3960 \
+    --dataset CA_SanFrancisco_1_B23 --depth 10 --out sf.png
+```
+
+2,277 datasets are available; the index lives in the `usgs-lidar` boundaries
+GeoJSON.
+
+---
+
 MIT licensed, like everything outside `third_party/`.
