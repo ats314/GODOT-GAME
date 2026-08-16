@@ -53,6 +53,13 @@ blur inside a 1 km box degenerates to a constant).
 
 Negative R² means worse than predicting the mean. Both numbers are the finding:
 
+> **Re-run at 2 km.** The walkable tiles were widened from 1024 m to 2048 m, so
+> the shipped numbers moved and are recorded here rather than quietly replaced.
+> Manhattan: fit **0.328**, transferred **−0.065** — the same story, slightly
+> less bad because a 2 km box contains more gradient than a 1 km one. San
+> Francisco moved more, and is discussed in its own section below. The
+> conclusion below is unchanged; the arithmetic is on the new extents.
+
 **Where the city puts its mass is economically predictable. Which building is
 tall is not.** At kilometre scale, a third of the variance in height follows
 activity and access. At block scale, none of it does — that is decided by the
@@ -88,6 +95,35 @@ The model was then fitted to San Francisco with nothing changed but the tiles.
 
 **Access and activity explain a third of Manhattan's skyline and three percent
 of San Francisco's.** The same predictors, the same code, the same sensor.
+
+### At 2 km, San Francisco's number moves and Manhattan's does not
+
+Re-fitted for the widened tiles, with the water detector also running on the
+wide fit tile:
+
+| | Manhattan | San Francisco |
+|---|---|---|
+| fit R² at 8 km | 0.328 | **0.114** |
+| transferred R² at 2 km | −0.065 | **+0.047** |
+| places in the fit tile | 138,034 | 35,592 |
+| dominant coefficient | log activity **+0.350** | log centrality **+0.616** |
+
+Manhattan barely moves, which is what a stable fit looks like. San Francisco
+goes from 0.031 to 0.114 and from a negative transfer to a positive one — the
+first time the model beats predicting the mean anywhere.
+
+**This is not evidence that the model got better.** Two things changed at once:
+the evaluation tile doubled, and water is now detected and levelled on both
+tiles, which removes 36,022 wide-tile cells that were previously being fed to
+the fit as land. Either could produce the shift, and the runs to separate them
+were not done. What is safe to say is narrower than it looks: San Francisco's
+fit is sensitive to extent and to how water is handled, and Manhattan's is not
+— which is itself consistent with the claim below that Manhattan's skyline is
+the economically determined one. A sensitive fit is a weak fit.
+
+The coefficient story survives either way: San Francisco's activity term is
+still near zero or negative, and what signal exists is still plain distance to
+the centre, now more strongly (+0.616).
 
 That is not a failure of the San Francisco fit; it is a statement about San
 Francisco. Its built form is far less economically determined — height limits,
