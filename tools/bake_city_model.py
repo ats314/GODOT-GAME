@@ -71,7 +71,7 @@ class Tile:
         from PIL import Image
         img = np.asarray(Image.open(png))
         self.h = img[:GRID, :, 0].astype(np.float64) * HSTEP
-        self.flags = img[GRID:, :, 0].astype(np.uint8)
+        self.flags = img[GRID:GRID * 2, :, 0].astype(np.uint8)
         self.built = self.h > 6.0
         self.cell_m = cell_m
         dlat = (GRID * cell_m / 2) / 111320.0

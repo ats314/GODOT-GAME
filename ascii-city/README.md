@@ -169,7 +169,7 @@ that draws it.
 
 ---
 
-## MEASURED CITY — real Manhattan from lidar (press `K`)
+## MEASURED CITY — real places from lidar (press `K`, again to switch)
 
 A third input to the same unchanged middle layer. A seed gives a plausible
 city; source code gives a legible one; a laser survey gives an actual one.
@@ -205,8 +205,34 @@ Two things worth knowing about the data:
 Colour carries height rather than appearance — the dataset does have RGB, but
 real colour pulls toward photoreal, and the display is meant to be a readout.
 
+### Terrain
+
+The first version computed `DSM - DTM` and then threw the DTM away. On Manhattan
+that costs nothing — 19 m of relief across the whole tile. On San Francisco it
+flattens the thing that makes the place itself.
+
+So the bake now carries a third band, the ground surface, and a cell is a solid
+column from its terrain up to `terrain + height` rather than from zero up. The
+raycaster reads a ground elevation per cell; facade coordinates are measured
+relative to that ground so window rows line up per building instead of by
+absolute elevation; the side of an unbuilt column is an exposed hillside rather
+than a wall; and the player walks the terrain, eased so kerbs and hill crests do
+not snap the camera. Generated cities carry a zero terrain plane, which makes
+the terrain path collapse back to the flat one exactly.
+
+Two cities ship, both real:
+
+| | relief | tallest | points sampled |
+|---|---|---|---|
+| Midtown Manhattan | 19 m | 400 m | 4.3 M |
+| San Francisco | **87 m** | 251 m | 145 M |
+
+Colour still carries height, but ranked *within the tile* rather than against an
+absolute scale — a fixed mapping means a low-rise city only ever uses the dark
+end of the ramp, so San Francisco came out muddy while Manhattan glowed.
+
 Limits: the tile is 1024 m and the world wraps, so walking far enough repeats
-it. No water or vegetation in this extent.
+it. No water or vegetation in these extents.
 
 Bake a different place:
 

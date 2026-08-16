@@ -229,6 +229,17 @@ def main():
     height = np.where(spikes, neigh, height)
     height = np.clip(height, 0.0, 250 * HSTEP)
 
+    # ---- terrain: the ground surface is a height field too, and discarding it
+    #      flattens San Francisco onto a plane
+    terr = np.where(valid, filled, np.nan)
+    if np.isnan(terr).all():
+        terr = np.zeros((GRID, GRID))
+    tmin = float(np.nanmin(terr))
+    terr = np.where(np.isnan(terr), tmin, terr) - tmin
+    trange = float(terr.max())
+    tstep = max(trange / 250.0, 0.02)
+    print(f"terrain relief {trange:.1f} m over the tile ({tstep:.3f} m per byte)")
+
     # ---- classify each cell
     classified = (n_bld.sum() + n_veg.sum() + n_wat.sum()) > 0.01 * max(done, 1)
     if not classified:
@@ -271,9 +282,10 @@ def main():
     # channel silently destroys RGB wherever it is small — and flag bits are
     # mostly small. Emit a 256x512 fully opaque image instead: the grid on top,
     # the flag plane underneath.
-    out = np.zeros((GRID * 2, GRID, 4), dtype=np.uint8)
+    out = np.zeros((GRID * 3, GRID, 4), dtype=np.uint8)
     out[:GRID, :, 0:3] = tex[..., 0:3]
-    out[GRID:, :, 0] = tex[..., 3]
+    out[GRID:GRID * 2, :, 0] = tex[..., 3]
+    out[GRID * 2:, :, 0] = np.clip(terr / tstep, 0, 255).astype(np.uint8)
     out[..., 3] = 255
     Image.fromarray(out, "RGBA").save(args.out, optimize=True)
 
@@ -286,6 +298,8 @@ def main():
         "mean_building_m": round(float(height[building].mean()), 1) if built else 0,
         "building_cells": int(built), "water_cells": int(water.sum()),
         "street_cells": int(street.sum()), "veg_cells": int(veg.sum()),
+        "terrain_relief_m": round(trange, 1), "terrain_step_m": round(tstep, 4),
+        "ground_elev_min_m": round(tmin, 1),
     }
     print(json.dumps(stats, indent=1))
     if args.meta:
