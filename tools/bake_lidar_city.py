@@ -29,8 +29,8 @@ import numpy as np
 
 BASE = "https://s3-us-west-2.amazonaws.com/usgs-lidar-public"
 R_EARTH = 6378137.0
-GRID = 256                 # renderer grid, cells per side
-CELL_M = 4.0               # real metres per cell -> 1024 m across
+GRID = 256                 # renderer grid, cells per side (--grid overrides)
+CELL_M = 4.0               # real metres per cell -> 256 cells is 1024 m across
 HSTEP = 1.6                # renderer metres per height byte
 MAX_DEPTH = 9
 
@@ -102,8 +102,127 @@ def collect_nodes(dataset, ept, box, max_depth):
     return out
 
 
+def regions(mask):
+    """4-connected components of a boolean grid, largest first.
+
+    Yields index arrays, so a caller can test each candidate blob on its own
+    rather than on the mask as a whole. Iterative on purpose: a river fills a
+    third of the tile and recursion would blow the stack.
+    """
+    h, w = mask.shape
+    seen = np.zeros(mask.shape, dtype=bool)
+    found = []
+    for sy in range(h):
+        for sx in range(w):
+            if not mask[sy, sx] or seen[sy, sx]:
+                continue
+            stack, cells = [(sy, sx)], []
+            seen[sy, sx] = True
+            while stack:
+                y, x = stack.pop()
+                cells.append((y, x))
+                for ny, nx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+                    if 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not seen[ny, nx]:
+                        seen[ny, nx] = True
+                        stack.append((ny, nx))
+            found.append(np.array(cells))
+    found.sort(key=len, reverse=True)
+    return found
+
+
+def boxmean(a, r):
+    """Mean over a (2r+1) square, edge-clamped, via an integral image."""
+    p = np.pad(a.astype(np.float64), r, mode="edge")
+    c = np.pad(np.cumsum(np.cumsum(p, axis=0), axis=1), ((1, 0), (1, 0)))
+    n = 2 * r + 1
+    return (c[n:, n:] - c[:-n, n:] - c[n:, :-n] + c[:-n, :-n]) / (n * n)
+
+
+def close_speckle(mask, max_hole):
+    """Fill pinholes in a mask without drowning islands.
+
+    Thresholding return density cell by cell leaves a river full of holes, since
+    plenty of individual water cells do return a normal number of points. Only
+    holes smaller than max_hole and not touching the tile edge are filled, so
+    speckle closes but a genuine island in the channel survives.
+    """
+    out = mask.copy()
+    for cells in regions(~mask):
+        if len(cells) > max_hole:
+            continue
+        ys, xs = cells[:, 0], cells[:, 1]
+        if (ys.min() == 0 or xs.min() == 0
+                or ys.max() == mask.shape[0] - 1 or xs.max() == mask.shape[1] - 1):
+            continue
+        out[ys, xs] = True
+    return out
+
+
+def water_from_returns(n_pts, height, dsm, valid, min_cells):
+    """Find water from return structure rather than from the class channel.
+
+    Class 9 is the documented answer and this survey barely populates it: over
+    the East River it tags 4,204 cells of a body three times that size, because
+    it can only tag cells that returned something. So water is measured the same
+    way the vegetation detector measures foliage — off the beam.
+
+    Three channels were measured against the cells this survey did tag, on
+    Midtown at 4 m cells, and only one of them is worth anything:
+
+        points/cell   water 15    other flat ground 46   weak: 70% recall
+        intensity     water 69    other flat ground 43   real but *inverted*
+        multi-return  water 0.00  other flat ground 0.00 nothing
+
+    Near-infrared is absorbed by water, so the expectation was a dropout and
+    darkness. Density does fall, but only threefold rather than to nothing, and
+    intensity goes *up*: a flat surface returns specularly, so the few beams
+    that do come back come back hard. Both predictions had the wrong magnitude
+    and one had the wrong sign, which is why the rule below is not either of
+    them.
+
+    What actually identifies water is that its top surface is a plane. Over
+    13,461 contiguous cells the East River's DSM spans 0.20 m. No land does
+    that: the next candidate down, a pier at the same elevation, spans 1.34 m
+    and returns points more densely than typical ground rather than less. So
+    the rule is waterline plus flatness, with density kept only as corroboration
+    — it is reported, not gated on, because on its own it recalls 70%.
+
+    Flatness is judged on the DSM, which over water is the water surface itself.
+    The interpolated ground surface cannot be used, because it never reaches the
+    middle of a river at all (see the caller).
+    """
+    lit = n_pts[valid]
+    if lit.size == 0:
+        return np.zeros(n_pts.shape, dtype=bool), []
+    typical = float(np.median(lit))
+    # The waterline: if this tile has water at all, its lowest surfaces are it.
+    base = float(np.nanpercentile(dsm[valid], 2))
+    surf = np.where(valid, dsm, base)      # a void reads as being at the waterline
+    cand = close_speckle((surf <= base + 2.5) & (height < 2.0),
+                         max_hole=max(32, min_cells // 4))
+    water = np.zeros(n_pts.shape, dtype=bool)
+    kept = []
+    for cells in regions(cand):
+        if len(cells) < min_cells:
+            break                          # sorted by size: nothing later qualifies
+        ys, xs = cells[:, 0], cells[:, 1]
+        seen = valid[ys, xs]
+        dens = float(np.median(n_pts[ys, xs]))
+        if seen.sum() < 8:                 # a true void: large and empty is water
+            water[ys, xs] = True
+            kept.append((len(cells), base, 0.0, dens))
+            continue
+        s = dsm[ys[seen], xs[seen]]
+        lo, hi = np.nanpercentile(s, [10, 90])
+        if hi - lo > 0.75 or dens > typical:
+            continue                       # not a plane, or denser than ground
+        water[ys, xs] = True
+        kept.append((len(cells), float(np.nanmedian(s)), float(hi - lo), dens))
+    return water, kept
+
+
 def main():
-    global CELL_M
+    global CELL_M, GRID
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", default="NY_NewYorkCity")
     ap.add_argument("--lat", type=float, default=40.7530)
@@ -111,10 +230,18 @@ def main():
     ap.add_argument("--depth", type=int, default=MAX_DEPTH)
     ap.add_argument("--cell", type=float, default=CELL_M,
                     help="real metres per cell; 4 m covers 1 km, 32 m covers 8 km")
+    ap.add_argument("--grid", type=int, default=GRID,
+                    help="cells per side; must match the renderer's N. Doubling it "
+                         "doubles the extent at unchanged detail and costs no extra "
+                         "raycast work, because world cell size is unchanged.")
     ap.add_argument("--out", default="lidar-city.png")
     ap.add_argument("--meta", default=None)
+    ap.add_argument("--dump", default=None,
+                    help="write the accumulated per-cell fields to an .npz, so "
+                         "detectors can be tuned without re-fetching the tile")
     args = ap.parse_args()
     CELL_M = args.cell
+    GRID = args.grid
 
     import laspy
     from PIL import Image
@@ -251,12 +378,6 @@ def main():
     tstep = max(trange / 250.0, 0.02)
     print(f"terrain relief {trange:.1f} m over the tile ({tstep:.3f} m per byte)")
 
-    # ---- classify each cell
-    classified = (n_bld.sum() + n_veg.sum() + n_wat.sum()) > 0.01 * max(done, 1)
-    if not classified:
-        print("classification channel is sparse; deriving from geometry alone")
-    water = (n_wat > n_pts * 0.5) & (n_wat > 0)
-
     # ---- material evidence, and what it is actually worth ----------------
     # Measured on Midtown with silhouette edges excluded:
     #   roughness   street 0.41 vs roofs 0.47-0.50  -> no signal at 4 m cells.
@@ -271,6 +392,62 @@ def main():
     mean_int = np.where(valid, s_int / np.maximum(n_pts, 1), 0.0)
     multi = np.where(valid, n_multi / np.maximum(n_pts, 1), 0.0)
     int_med = float(np.median(mean_int[valid])) if valid.any() else 0.0
+
+    # ---- classify each cell
+    classified = (n_bld.sum() + n_veg.sum() + n_wat.sum()) > 0.01 * max(done, 1)
+    if not classified:
+        print("classification channel is sparse; deriving from geometry alone")
+    tagged = (n_wat > n_pts * 0.5) & (n_wat > 0)
+    if tagged.any():
+        # Calibrate against the cells the survey did tag, the same way the
+        # vegetation detector was calibrated: print the separation and let the
+        # numbers pick the channel rather than picking it from physics alone.
+        ref = valid & ~tagged & (height < 2.0)
+        for label, arr in (("points/cell", n_pts), ("intensity", mean_int),
+                           ("ground elev", filled), ("multi-return", multi)):
+            w = float(np.median(arr[tagged])) if tagged.any() else 0.0
+            d = float(np.median(arr[ref])) if ref.any() else 0.0
+            print(f"   {label:<13} water {w:8.2f}   other flat ground {d:8.2f}")
+    measured, blobs = water_from_returns(n_pts, height, dsm, valid,
+                                         min_cells=max(64, int(0.002 * GRID * GRID)))
+    for n, lvl, spread, dens in blobs:
+        print(f"water body: {n:,} cells, surface {lvl:.2f} m, {spread:.2f} m spread, "
+              f"{dens:.0f} points/cell")
+    # Both sources, not either. Where the survey tags water it is right; it is
+    # just far from complete.
+    water = tagged | measured
+    print(f"water: {int(tagged.sum()):,} cells tagged class 9, "
+          f"{int(measured.sum()):,} measured from returns, {int(water.sum()):,} together")
+    if not water.any():
+        print("no water in this extent")
+
+    if water.any():
+        # The ground fill propagates from cells that have ground returns, and a
+        # river has none — 24 blur passes reach about 24 cells, and the East
+        # River is wider than that, so mid-channel cells kept the tile median
+        # (14.6 m, identical to the streets). Left alone the river would render
+        # as a lagoon perched at street level. The DSM over water is the water
+        # surface, so use that, and level each body onto it.
+        for cells in regions(water):
+            ys, xs = cells[:, 0], cells[:, 1]
+            seen = valid[ys, xs]
+            level = (float(np.median(dsm[ys[seen], xs[seen]])) if seen.sum() >= 8
+                     else float(np.nanmin(filled)))
+            filled[ys, xs] = level
+        height = np.where(water, 0.0, height)
+        terr = np.where(valid | water, filled, np.nan)
+        tmin = float(np.nanmin(terr))
+        terr = np.where(np.isnan(terr), tmin, terr) - tmin
+        trange = float(terr.max())
+        tstep = max(trange / 250.0, 0.02)
+        print(f"terrain relief {trange:.1f} m after levelling water "
+              f"({tstep:.3f} m per byte)")
+
+    if args.dump:
+        np.savez_compressed(args.dump, n_pts=n_pts, dsm=np.where(valid, dsm, np.nan),
+                            filled=filled, valid=valid, height=height, n_wat=n_wat,
+                            mean_int=mean_int, multi=multi, water=water)
+        print(f"dumped per-cell fields to {args.dump}")
 
     veg = valid & (multi > 0.35) & (height > 2.0)
     if classified:
