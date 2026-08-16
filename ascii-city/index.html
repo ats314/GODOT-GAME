@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>NOCTIS-7 — A Walkable ASCII Megacity</title>
+<meta name="description" content="A walkable, procedurally generated cyberpunk megacity rendered entirely as coloured ASCII glyphs. One file, no assets, WebGL2.">
+<meta name="theme-color" content="#000000">
+<style>
+  :root{
+    --fg:#8ff0ff; --dim:#2b6b7a; --hot:#ff2f6e; --warn:#ffcc44;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0; height:100%; width:100%;
+    background:#000; color:var(--fg);
+    font-family:var(--mono);
+    overflow:hidden; touch-action:none; overscroll-behavior:none;
+    -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent;
+    -webkit-text-size-adjust:100%;
+  }
+  #gl{ display:block; position:fixed; inset:0; width:100%; height:100%; image-rendering:pixelated; }
+  .hud{ position:fixed; pointer-events:none; z-index:5; text-shadow:0 0 6px rgba(0,220,255,.35); }
+  #tl{ top:calc(env(safe-area-inset-top,0px) + 10px); left:calc(env(safe-area-inset-left,0px) + 12px);
+       font-size:11px; line-height:1.5; letter-spacing:.06em; }
+  #tl .k{ color:var(--dim); }
+  #tl .t{ color:#fff; font-weight:700; letter-spacing:.22em; }
+  #tl .d{ color:var(--warn); }
+  #bl{ bottom:calc(env(safe-area-inset-bottom,0px) + 10px); left:calc(env(safe-area-inset-left,0px) + 12px);
+       font-size:10.5px; line-height:1.6; color:var(--dim); letter-spacing:.05em; max-width:62vw;
+       transition:opacity .6s ease; }
+  #bl b{ color:var(--fg); font-weight:700; }
+  #map{ position:fixed; z-index:5; top:calc(env(safe-area-inset-top,0px) + 10px);
+        right:calc(env(safe-area-inset-right,0px) + 12px); width:132px; height:132px;
+        border:1px solid rgba(90,200,230,.25); background:rgba(0,8,14,.55); pointer-events:none;
+        image-rendering:pixelated; }
+  #toast{ position:fixed; z-index:8; left:50%; bottom:14%; transform:translateX(-50%);
+          font-size:12px; letter-spacing:.14em; color:#00121a; background:var(--fg);
+          padding:6px 14px; opacity:0; transition:opacity .25s ease; pointer-events:none; white-space:nowrap; }
+  #toast.on{ opacity:1; }
+
+  /* ---- boot / menu overlay ---- */
+  #boot{ position:fixed; inset:0; z-index:20; display:flex; flex-direction:column;
+         align-items:center; justify-content:center; gap:18px; background:#000;
+         transition:opacity .55s ease; }
+  #boot.off{ opacity:0; pointer-events:none; }
+  #logo{ font-size:clamp(6px, 1.55vw, 13px); line-height:1.02; white-space:pre; color:#fff;
+         text-shadow:0 0 14px rgba(255,60,120,.55), 0 0 30px rgba(0,180,255,.35); }
+  #tag{ font-size:12px; letter-spacing:.42em; color:var(--dim); text-align:center; }
+  #go{ font-family:var(--mono); font-size:13px; letter-spacing:.3em; color:#00121a; background:var(--fg);
+       border:0; padding:13px 26px; cursor:pointer; }
+  #go:active{ transform:translateY(1px); }
+  #legend{ font-size:10.5px; color:var(--dim); line-height:1.8; text-align:center; letter-spacing:.06em; }
+  #legend b{ color:var(--fg); }
+  #err{ position:fixed; inset:0; z-index:40; display:none; padding:26px; background:#000; color:#ff6a8c;
+        font-size:13px; line-height:1.6; }
+
+  /* ---- touch controls ---- */
+  #touch{ position:fixed; inset:0; z-index:6; display:none; pointer-events:none; }
+  #touch button{ pointer-events:auto; }
+  #stick{ position:absolute; left:calc(env(safe-area-inset-left,0px) + 26px);
+          bottom:calc(env(safe-area-inset-bottom,0px) + 34px); width:118px; height:118px;
+          border:1px solid rgba(90,200,230,.3); border-radius:50%; }
+  #knob{ position:absolute; left:50%; top:50%; width:46px; height:46px; margin:-23px 0 0 -23px;
+         border-radius:50%; background:rgba(120,235,255,.22); border:1px solid rgba(140,240,255,.55); }
+  .tbtn{ position:absolute; right:calc(env(safe-area-inset-right,0px) + 20px); width:62px; height:62px;
+         border-radius:50%; border:1px solid rgba(90,200,230,.32); color:var(--fg); background:rgba(0,20,30,.35);
+         font-family:var(--mono); font-size:10px; letter-spacing:.1em; display:grid; place-items:center; }
+  #bRun{ bottom:calc(env(safe-area-inset-bottom,0px) + 118px); }
+  #bFly{ bottom:calc(env(safe-area-inset-bottom,0px) + 44px); }
+  #bSet{ bottom:calc(env(safe-area-inset-bottom,0px) + 192px); }
+  @media (max-width:760px){ #map{ width:96px; height:96px; } #bl{ max-width:44vw; font-size:9.5px; } }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="map" width="132" height="132"></canvas>
+
+<div class="hud" id="tl"></div>
+<div class="hud" id="bl"></div>
+<div id="toast"></div>
+
+<div id="touch">
+  <div id="stick"><div id="knob"></div></div>
+  <button class="tbtn" id="bRun">RUN</button>
+  <button class="tbtn" id="bFly">FLY</button>
+  <button class="tbtn" id="bSet">SET</button>
+</div>
+
+<div id="boot">
+  <pre id="logo"> ███▄    █  ▒█████   ▄████▄  ▄▄▄█████▓ ██▓  ██████     ██▀███
+ ██ ▀█   █ ▒██▒  ██▒▒██▀ ▀█  ▓  ██▒ ▓▒▓██▒▒██    ▒    ▓██ ▒ ██▒
+▓██  ▀█ ██▒▒██░  ██▒▒▓█    ▄ ▒ ▓██░ ▒░▒██▒░ ▓██▄      ▓██ ░▄█ ▒
+▓██▒  ▐▌██▒▒██   ██░▒▓▓▄ ▄██▒░ ▓██▓ ░ ░██░  ▒   ██▒   ▒██▀▀█▄
+▒██░   ▓██░░ ████▓▒░▒ ▓███▀ ░  ▒██▒ ░ ░██░▒██████▒▒   ░██▓ ▒██▒
+░ ▒░   ▒ ▒ ░ ▒░▒░▒░ ░ ░▒ ▒  ░  ▒ ░░   ░▓  ▒ ▒▓▒ ▒ ░   ░ ▒▓ ░▒▓░</pre>
+  <div id="tag">A W A L K A B L E &nbsp; A S C I I &nbsp; M E G A C I T Y</div>
+  <button id="go">ENTER THE GRID</button>
+  <div id="legend">
+    <b>WASD</b> move &nbsp;·&nbsp; <b>MOUSE</b> look &nbsp;·&nbsp; <b>SHIFT</b> run &nbsp;·&nbsp; <b>F</b> drone
+    <br><b>V</b> switch alphabet &nbsp;·&nbsp; <b>C</b> copy frame as text &nbsp;·&nbsp; <b>R</b> new city
+    <br><b>[ ]</b> glyph size &nbsp;·&nbsp; <b>G</b> png &nbsp;·&nbsp; <b>M</b> sound &nbsp;·&nbsp; <b>P</b> hud &nbsp;·&nbsp; <b>H</b> help
+  </div>
+</div>
+<div id="err"></div>
+
+<script>
+"use strict";
+/* ══════════════════════════════════════════════════════════════════════════
+   NOCTIS-7 — a walkable ASCII megacity.
+
+   Pipeline (WebGL2, four passes, zero external assets):
+     1  SCENE   at character-cell resolution. One 3-D DDA heightfield raycast
+                per *character cell*, not per pixel. Writes MRT: lit colour +
+                emissive mask, and (luminance, surface-kind, depth).
+     2  BLOOM   two-tap separable blur of the emissive-masked colour.
+     3  GLYPH   per cell: Sobel over luminance+depth picks a line glyph for
+                silhouettes, otherwise a per-surface luminance ramp. Writes
+                (foreground colour, glyph index).
+     4  COMPOSITE at full device resolution: one atlas lookup per pixel plus
+                bloom, scanlines, aberration, vignette.
+
+   The city is a 256x256 torus of grid cells baked into an RGBA8 texture:
+     R height   G palette|facade-style   B window density   A flag bits
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════ DISPLAY ALPHABETS ═════════════════════════
+   The scene is rendered once; only the *alphabet* it is printed in changes.
+   Two families:
+     ramp  — one glyph per cell chosen by luminance (+ line glyphs on edges).
+             Legible as material: 'X' reads as girder, '0' as window.
+     bits  — the cell is sub-sampled SX x SY and the glyph whose dot pattern
+             matches the (Bayer-dithered) sub-cell coverage is printed.
+             Braille gives 8x the spatial resolution for the same one-char cost.
+   ═══════════════════════════════════════════════════════════════════════ */
+const K = { SKY:0, FAC:1, WIN:2, ROOF:3, ROAD:4, PARK:5, WATER:6, SIGN:7 };
+
+function quadrantGlyphs(){
+  // bit order: 1=TL 2=TR 4=BL 8=BR  (matches j*SX+i in the glyph shader)
+  const t = new Array(16);
+  const put = (tl,tr,bl,br,ch) => { t[tl | tr<<1 | bl<<2 | br<<3] = ch; };
+  put(0,0,0,0,' '); put(1,0,0,0,'▘'); put(0,1,0,0,'▝'); put(1,1,0,0,'▀');
+  put(0,0,1,0,'▖'); put(1,0,1,0,'▌'); put(0,1,1,0,'▞'); put(1,1,1,0,'▛');
+  put(0,0,0,1,'▗'); put(1,0,0,1,'▚'); put(0,1,0,1,'▐'); put(1,1,0,1,'▜');
+  put(0,0,1,1,'▄'); put(1,0,1,1,'▙'); put(0,1,1,1,'▟'); put(1,1,1,1,'█');
+  return t;
+}
+function brailleGlyphs(){
+  // U+2800 + dot mask. Our bit i is (row j, col c) = j*2+c, rows top-down.
+  const dot = [[0,1,2,6], [3,4,5,7]];        // dot bit per [col][row]
+  const out = new Array(256);
+  for (let v = 0; v < 256; v++){
+    let mask = 0;
+    for (let j = 0; j < 4; j++) for (let c = 0; c < 2; c++)
+      if (v & (1 << (j*2 + c))) mask |= 1 << dot[c][j];
+    out[v] = String.fromCharCode(0x2800 + mask);
+  }
+  return out;
+}
+
+const ALPHABETS = [
+  {
+    name:'ASCII', mode:'ramp', sub:[1,1], probe:'X',
+    glyphs: [' ', '.', "'", '`', ',', ':', ';', '-', '_', '~', '=', '+', '*', '!', '|', '/',
+             '\\', '<', '>', '(', ')', '[', ']', '{', '}', '^', '"', 'i', 'l', 't', 'c', 'v',
+             's', 'x', 'z', 'X', 'Z', 'o', 'O', '0', '#', '%', '&', '8', 'A', 'W', 'H', 'T',
+             'V', 'M', '@', '$'],
+    edges: ['-', '/', '|', '\\'],
+    ramps: {
+      [K.SKY]:   [' ',' ',' ',' ','.','.',"'",':'],
+      [K.FAC]:   [' ','.',':',';','-','=','+','v','c','s','x','z','o','X','#','%'],
+      [K.WIN]:   ['.',':','c','o','O','0','8','#','@','@'],
+      [K.ROOF]:  [' ','.','_','-','=','+','#','%'],
+      [K.ROAD]:  [' ','.',':','-','=','+','#','%','@'],
+      [K.PARK]:  [' ','.',',',':','*','o','&','@'],
+      [K.WATER]: [' ','.','~','-','=','+','#','@'],
+      [K.SIGN]:  [' ',':','[',']','{','}','#','8','@','$']
+    }
+  },
+  {
+    name:'TELETEXT', mode:'ramp', sub:[1,1], probe:'▓',
+    glyphs: [' ', '·', '.', ':', '░', '▒', '▓', '█', '▄', '▀',
+             '▌', '▐', '─', '│', '╱', '╲', '┼', '•', '■', '▫'],
+    edges: ['─', '╱', '│', '╲'],
+    ramps: {
+      [K.SKY]:   [' ',' ',' ','·','.',':','░'],
+      [K.FAC]:   [' ','·','.',':','░','░','▒','▒','▓','█'],
+      [K.WIN]:   ['.',':','░','▒','▓','█','█'],
+      [K.ROOF]:  [' ','·','.','░','▒','▓'],
+      [K.ROAD]:  [' ','·','.',':','░','▒','▓','█'],
+      [K.PARK]:  [' ','·','•','░','▒','▓'],
+      [K.WATER]: [' ','·','.','░','▒','▓'],
+      [K.SIGN]:  [' ',':','▫','░','▒','■','█']
+    }
+  },
+  { name:'QUADRANT', mode:'bits', sub:[2,2], probe:'▟', glyphs: quadrantGlyphs(), edges:null, ramps:null },
+  { name:'BRAILLE',  mode:'bits', sub:[2,4], probe:'⣿', glyphs: brailleGlyphs(),  edges:null, ramps:null }
+];
+
+let ALPHA = 0;
+const A = () => ALPHABETS[ALPHA];
+const GRID_COLS = 16;
+const gridRows = () => Math.ceil(A().glyphs.length / GRID_COLS);
+
+/* ──────────────────────────── neon palette ───────────────────────────── */
+const PALETTE = [
+  [0.16,0.42,1.00], [0.10,0.78,1.00], [0.10,0.95,0.86], [0.16,0.92,0.35],
+  [0.62,0.98,0.22], [0.98,0.78,0.16], [1.00,0.52,0.10], [1.00,0.20,0.16],
+  [1.00,0.14,0.52], [0.85,0.20,0.95], [0.55,0.30,1.00], [0.72,0.86,1.00],
+  [0.90,0.94,1.00], [0.10,0.30,0.85], [0.75,0.36,0.18], [0.15,0.72,0.55]
+];
+
+/* ────────────────────────────── utilities ────────────────────────────── */
+function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0;
+  let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+  return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
+const lerp  = (a,b,t) => a + (b - a) * t;
+
+/* ═══════════════════════════ CITY GENERATION ══════════════════════════ */
+const N = 256;                 // grid cells per side (torus)
+const CELLSZ = 4.0;            // world units per grid cell
+const HSTEP = 1.6;             // world units per height byte
+
+const FLAG = { ROAD:1, ROADX:2, ROADZ:4, PARK:8, WATER:16, SIGNSTRIP:32, BEACON:64, PLAZA:128 };
+
+const DISTRICTS = [
+  { name:'THE CORE',    h:[58,170], pal:[0,1,2,11,13],  dens:[.22,.55], sty:[0,1,3,5], sign:.10, park:.02, plaza:.10 },
+  { name:'NEON MILE',   h:[26, 86], pal:[8,9,7,6,5],    dens:[.30,.66], sty:[0,3,2,0], sign:.34, park:.01, plaza:.08 },
+  { name:'THE STACKS',  h:[15, 50], pal:[6,14,5,7,8],   dens:[.30,.62], sty:[0,4,3,0], sign:.14, park:.03, plaza:.06 },
+  { name:'GLASS ROW',   h:[38,118], pal:[1,2,11,12,3],  dens:[.18,.46], sty:[1,5,1,0], sign:.06, park:.06, plaza:.12 },
+  { name:'VERDANT TER', h:[ 9, 38], pal:[3,4,15,2],     dens:[.16,.40], sty:[7,0,7,3], sign:.03, park:.46, plaza:.14 },
+  { name:'THE FOUNDRY', h:[10, 30], pal:[14,6,5,9],     dens:[.12,.40], sty:[4,5,0,4], sign:.09, park:.04, plaza:.10 },
+  { name:'SUMP FLATS',  h:[ 7, 24], pal:[14,5,3,6,10],  dens:[.10,.36], sty:[4,0,5,4], sign:.06, park:.12, plaza:.16 }
+];
+
+let CITY = null;
+
+function makeCity(seed){
+  const rnd = mulberry32(seed >>> 0);
+  const ri = (a,b) => a + Math.floor(rnd() * (b - a + 1));
+  const rf = (a,b) => a + rnd() * (b - a);
+  const pick = arr => arr[Math.floor(rnd() * arr.length)];
+
+  const tex   = new Uint8Array(N * N * 4);
+  const dist  = new Uint8Array(N * N);
+  const hgt   = new Uint8Array(N * N);
+  const flags = new Uint8Array(N * N);
+
+  /* --- districts: voronoi on the torus so the map wraps seamlessly --- */
+  const NS = 26, sx = [], sy = [], sd = [];
+  for (let i = 0; i < NS; i++){ sx.push(rnd()*N); sy.push(rnd()*N); sd.push(i < DISTRICTS.length ? i : ri(0, DISTRICTS.length-1)); }
+  const wrapd = (a,b) => { let d = Math.abs(a-b); return d > N/2 ? N-d : d; };
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+    let best = 1e9, bi = 0;
+    for (let i = 0; i < NS; i++){
+      const dx = wrapd(x, sx[i]), dy = wrapd(y, sy[i]);
+      const d = dx*dx + dy*dy;
+      if (d < best){ best = d; bi = i; }
+    }
+    dist[y*N + x] = sd[bi];
+  }
+
+  /* --- street grid: irregular spacing, occasional 2-wide avenues --- */
+  const roadCol = new Uint8Array(N), roadRow = new Uint8Array(N);
+  for (let axis = 0; axis < 2; axis++){
+    const arr = axis ? roadRow : roadCol;
+    let p = 0;
+    while (p < N - 5){
+      const r = rnd();
+      const w = r < 0.12 ? 4 : r < 0.34 ? 3 : r < 0.86 ? 2 : 1;   // boulevard / street / alley
+      for (let i = 0; i < w; i++) arr[(p+i) % N] = 1;
+      p += w + 5 + Math.floor(rnd()*9);
+    }
+  }
+
+  /* --- canal: a wide water band with bridges where streets cross --- */
+  const canalZ = ri(24, N-28), canalW = ri(3, 5);
+  const isWater = (x,y) => {
+    const dy = ((y - canalZ) % N + N) % N;
+    return dy < canalW && !roadCol[x];
+  };
+
+  const idx = (x,y) => (((y % N) + N) % N) * N + (((x % N) + N) % N);
+
+  /* --- paint streets and water first --- */
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+    const i = idx(x,y);
+    if (isWater(x,y)){ flags[i] = FLAG.WATER; continue; }
+    if (roadCol[x] || roadRow[y]){
+      flags[i] = FLAG.ROAD | (roadRow[y] ? FLAG.ROADX : 0) | (roadCol[x] ? FLAG.ROADZ : 0);
+    }
+  }
+
+  /* --- carve blocks into lots, one building per lot --- */
+  const free = (x,y) => flags[idx(x,y)] === 0;
+  const runs = (arr) => {            // maximal cyclic runs of non-road indices
+    const out = []; let start = -1;
+    for (let i = 0; i < N; i++){
+      if (!arr[i]){ if (start < 0) start = i; }
+      else if (start >= 0){ out.push([start, i-1]); start = -1; }
+    }
+    if (start >= 0) out.push([start, N-1]);
+    return out;
+  };
+  const colRuns = runs(roadCol), rowRuns = runs(roadRow);
+
+  const lots = [];
+  const split = (x0,x1,z0,z1,depth) => {
+    const w = x1-x0+1, h = z1-z0+1;
+    if (w <= 0 || h <= 0) return;
+    const big = Math.max(w,h);
+    if (depth < 5 && (big > 4 || (big > 2 && rnd() < 0.55))){
+      if (w >= h){ const c = x0 + Math.max(1, Math.min(w-1, Math.round(rf(w*0.35, w*0.65))));
+                   split(x0, c-1, z0, z1, depth+1); split(c, x1, z0, z1, depth+1); }
+      else       { const c = z0 + Math.max(1, Math.min(h-1, Math.round(rf(h*0.35, h*0.65))));
+                   split(x0, x1, z0, c-1, depth+1); split(x0, x1, c, z1, depth+1); }
+      return;
+    }
+    lots.push([x0,x1,z0,z1]);
+  };
+  for (const [x0,x1] of colRuns) for (const [z0,z1] of rowRuns) split(x0,x1,z0,z1,0);
+
+  /* --- fill each lot --- */
+  for (const [x0,x1,z0,z1] of lots){
+    const cx = (x0+x1)>>1, cz = (z0+z1)>>1;
+    const D = DISTRICTS[dist[idx(cx,cz)]];
+    const area = (x1-x0+1)*(z1-z0+1);
+    const roll = rnd();
+
+    // any water in the lot voids it
+    let wet = false;
+    for (let y = z0; y <= z1 && !wet; y++) for (let x = x0; x <= x1; x++)
+      if (flags[idx(x,y)] & FLAG.WATER){ wet = true; break; }
+    if (wet) continue;
+
+    if (roll < D.park){                                     // ---- park block
+      for (let y = z0; y <= z1; y++) for (let x = x0; x <= x1; x++){
+        const i = idx(x,y); if (flags[i]) continue;
+        flags[i] = FLAG.PARK;
+        if (rnd() < 0.42){                                   // a tree cluster
+          hgt[i] = ri(3, 7);
+          tex[i*4+1] = pick([3,4,15,2]) | (7 << 4);
+          tex[i*4+2] = Math.floor(rf(0.2,0.5) * 255);
+        }
+      }
+      continue;
+    }
+    if (roll < D.park + D.plaza && area <= 6){              // ---- open plaza
+      for (let y = z0; y <= z1; y++) for (let x = x0; x <= x1; x++){
+        const i = idx(x,y); if (!flags[i]) flags[i] = FLAG.PLAZA;
+      }
+      continue;
+    }
+
+    // ---- building
+    const slim = (x1===x0 && z1===z0);
+    const tall = Math.pow(rnd(), slim ? 1.1 : 2.0);
+    let hh = Math.round(lerp(D.h[0], D.h[1], tall) * rf(0.85, 1.15));
+    let sty = pick(D.sty);
+    // a dominant local palette with occasional outsiders: coherence, not monotony
+    let pal = rnd() < 0.72 ? pick(D.pal) : Math.floor(rnd() * 16);
+    let dens = rf(D.dens[0], D.dens[1]);
+
+    if (slim && rnd() < D.sign * 2.2){ sty = 6; hh = Math.round(hh * rf(0.6, 1.25)); pal = pick([5,6,7,8,9,2]); }
+    if (area >= 6 && rnd() < 0.10){ sty = 7; pal = pick([3,4,15]); }   // vertical garden
+
+    const hb = clamp(Math.round(hh / HSTEP), 3, 250);
+    let fl = 0;
+    if (hb * HSTEP > 55 && rnd() < 0.55) fl |= FLAG.BEACON;
+    if (rnd() < D.sign) fl |= FLAG.SIGNSTRIP;
+
+    for (let y = z0; y <= z1; y++) for (let x = x0; x <= x1; x++){
+      const i = idx(x,y); if (flags[i]) continue;
+      hgt[i] = hb; flags[i] = fl;
+      tex[i*4+1] = (pal & 15) | ((sty & 15) << 4);
+      tex[i*4+2] = Math.floor(clamp(dens, 0, 1) * 255);
+    }
+  }
+
+  /* --- the landmark: a megaspire on a plaza at the map centre --- */
+  const lc = N >> 1;
+  for (let y = lc-3; y <= lc+3; y++) for (let x = lc-3; x <= lc+3; x++){
+    const i = idx(x,y);
+    const inner = Math.abs(x-lc) <= 1 && Math.abs(y-lc) <= 1;
+    if (inner){
+      hgt[i] = 250; flags[i] = FLAG.BEACON | FLAG.SIGNSTRIP;
+      tex[i*4+1] = 1 | (1 << 4); tex[i*4+2] = 200;
+    } else if (!(flags[i] & (FLAG.ROAD|FLAG.WATER))){
+      hgt[i] = Math.abs(x-lc) <= 2 && Math.abs(y-lc) <= 2 ? 110 : 0;
+      flags[i] = hgt[i] ? FLAG.BEACON : FLAG.PLAZA;
+      if (hgt[i]){ tex[i*4+1] = 1 | (1 << 4); tex[i*4+2] = 190; }
+    }
+  }
+
+  /* --- bake --- */
+  for (let i = 0; i < N*N; i++){
+    tex[i*4+0] = hgt[i];
+    tex[i*4+3] = flags[i];
+    if (hgt[i] === 0 && !(flags[i] & (FLAG.ROAD|FLAG.WATER|FLAG.PARK|FLAG.PLAZA))) tex[i*4+3] |= FLAG.PLAZA;
+  }
+
+  /* --- spawn: the widest road near the centre with the longest clear run,
+         standing mid-carriageway and facing down its length --- */
+  const runLen = (x, y, dx, dy) => {
+    let n = 0;
+    while (n < 90 && (flags[idx(x + dx*(n+1), y + dy*(n+1))] & FLAG.ROAD)) n++;
+    return n;
+  };
+  const widthAt = (x, y, dx, dy) => {
+    let a = 0, b = 0;
+    while (a < 6 && (flags[idx(x - dx*(a+1), y - dy*(a+1))] & FLAG.ROAD)) a++;
+    while (b < 6 && (flags[idx(x + dx*(b+1), y + dy*(b+1))] & FLAG.ROAD)) b++;
+    return { w: a + b + 1, off: (b - a) / 2 };
+  };
+  let spawn = [lc + 8, lc + 8], spawnYaw = 0, bestScore = -1;
+  for (let y = lc - 34; y <= lc + 34; y++) for (let x = lc - 34; x <= lc + 34; x++){
+    const f = flags[idx(x,y)];
+    if (!(f & FLAG.ROAD)) continue;
+    const along = (f & FLAG.ROADZ) ? [0, 1] : [1, 0];       // ROADZ runs north-south
+    const perp  = (f & FLAG.ROADZ) ? [1, 0] : [0, 1];
+    const fwdN = runLen(x, y, along[0], along[1]), bakN = runLen(x, y, -along[0], -along[1]);
+    const { w, off } = widthAt(x, y, perp[0], perp[1]);
+    const score = w * 26 + Math.max(fwdN, bakN) * 2 - Math.hypot(x - lc, y - lc) * 0.6;
+    if (score > bestScore){
+      bestScore = score;
+      spawn = [x + perp[0] * off, y + perp[1] * off];
+      const dir = fwdN >= bakN ? 1 : -1;
+      spawnYaw = Math.atan2(along[0] * dir, -(along[1] * dir));   // yaw 0 looks toward -Z
+    }
+  }
+
+  return { tex, hgt, flags, dist, seed, spawn, spawnYaw, canalZ };
+}
+
+/* ═════════════════════════════ WEBGL SETUP ════════════════════════════ */
+const canvas = document.getElementById('gl');
+let gl = canvas.getContext('webgl2', { antialias:false, alpha:false, depth:false, stencil:false,
+                                       powerPreference:'high-performance' });
+if (!gl){
+  const e = document.getElementById('err');
+  e.style.display = 'block';
+  e.textContent = 'WebGL2 is required for NOCTIS-7 and is not available in this browser.';
+  throw new Error('no webgl2');
+}
+
+function sh(type, src){
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
+    const log = gl.getShaderInfoLog(s);
+    console.error(log, src.split('\n').map((l,i)=>(i+1)+': '+l).join('\n'));
+    throw new Error('shader: ' + log);
+  }
+  return s;
+}
+function prog(fs, vs){
+  const p = gl.createProgram();
+  gl.attachShader(p, sh(gl.VERTEX_SHADER, vs || VS));
+  gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error('link: ' + gl.getProgramInfoLog(p));
+  const u = {};
+  const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++){ const info = gl.getActiveUniform(p, i);
+    const nm = info.name.replace(/\[0\]$/, '');
+    u[nm] = gl.getUniformLocation(p, info.name); }
+  return { p, u };
+}
+
+const VS = `#version 300 es
+out vec2 vUv;
+void main(){
+  vec2 q = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
+  vUv = q;
+  gl_Position = vec4(q * 2.0 - 1.0, 0.0, 1.0);
+}`;
+
+/* ─────────────────────────── PASS 1 — SCENE ──────────────────────────── */
+const FS_SCENE = `#version 300 es
+precision highp float;
+precision highp int;
+
+in vec2 vUv;
+layout(location = 0) out vec4 oCol;
+layout(location = 1) out vec4 oInf;
+
+uniform sampler2D uCity;
+uniform vec3  uPal[16];
+uniform vec3  uCam;
+uniform vec2  uAng;
+uniform float uAspect, uTanFov, uTime, uFlash, uFogK, uWet, uRainAmt;
+uniform int   uSteps, uRefl;
+
+const float CS   = ` + CELLSZ.toFixed(1) + `;
+const float HS   = ` + HSTEP.toFixed(2) + `;
+const float MAPN = ` + N.toFixed(1) + `;
+const float MAXD = 340.0;
+
+#define K_SKY 0
+#define K_FAC 1
+#define K_WIN 2
+#define K_ROOF 3
+#define K_ROAD 4
+#define K_PARK 5
+#define K_WATER 6
+#define K_SIGN 7
+
+float h11(float p){ p = fract(p * 0.1031); p *= p + 33.33; p *= p + p; return fract(p); }
+float h12(vec2 p){ vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(h12(i), h12(i + vec2(1,0)), f.x), mix(h12(i + vec2(0,1)), h12(i + vec2(1,1)), f.x), f.y);
+}
+float fbm(vec2 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++){ s += a * vnoise(p); p *= 2.03; a *= 0.5; } return s; }
+
+vec4 cityAt(vec2 cell){ return texture(uCity, (cell + 0.5) / MAPN); }
+
+/* ------------------------------- sky ------------------------------- */
+vec3 skyCol(vec3 rd){
+  float y = rd.y;
+  vec3 c = mix(vec3(0.052,0.040,0.082), vec3(0.004,0.006,0.017), smoothstep(-0.06, 0.55, y));
+  c += vec3(0.105,0.035,0.145) * exp(-abs(y) * 9.0);
+  float smog = fbm(vec2(atan(rd.z, rd.x) * 2.4, y * 7.0 - uTime * 0.015));
+  c *= 0.72 + 0.55 * smog;
+  vec2 sp = floor(vec2(atan(rd.z, rd.x) * 46.0, y * 70.0));
+  c += vec3(0.65,0.78,1.0) * smoothstep(0.9962, 0.9994, h12(sp)) * smoothstep(0.03, 0.4, y) * 0.85;
+  vec3 md = normalize(vec3(0.62, 0.30, -0.72));
+  float d = dot(rd, md);
+  float disc = smoothstep(0.9950, 0.9972, d);
+  float bands = 0.5 + 0.5 * sin(rd.y * 430.0 - uTime * 0.7);
+  c = mix(c, vec3(0.95,0.19,0.15) * (0.55 + 0.75 * bands), disc * 0.9);
+  c += vec3(0.42,0.10,0.09) * exp(-(1.0 - d) * 620.0) * 0.9;
+  c += vec3(0.75,0.82,1.0) * uFlash * 0.55;
+  return c;
+}
+
+/* ------------------------------ raycast ---------------------------- */
+struct Hit { float t; int face; vec3 p; vec3 n; vec4 c; float h; };
+
+bool trace(vec3 ro, vec3 rd, int maxSteps, float tmax, out Hit hh){
+  vec2 p0   = ro.xz / CS;
+  vec2 cell = floor(p0);
+  vec2 rdc  = rd.xz / CS;
+  vec2 stp  = vec2(rdc.x < 0.0 ? -1.0 : 1.0, rdc.y < 0.0 ? -1.0 : 1.0);
+  vec2 dd   = vec2(1.0 / max(abs(rdc.x), 1e-6), 1.0 / max(abs(rdc.y), 1e-6));
+  vec2 sd   = vec2((rdc.x < 0.0 ? p0.x - cell.x : cell.x + 1.0 - p0.x) * dd.x,
+                   (rdc.y < 0.0 ? p0.y - cell.y : cell.y + 1.0 - p0.y) * dd.y);
+  float tEnter = 0.0, lastAxis = -1.0;
+
+  for (int i = 0; i < 320; i++){
+    if (i >= maxSteps) break;
+    float tExit = min(sd.x, sd.y);
+    vec4 c = cityAt(cell);
+    float h = c.r * 255.0 * HS;
+    float yE = ro.y + rd.y * tEnter;
+    if (yE < -1.0) return false;
+
+    if (h > 0.0){
+      if (tEnter > 0.0 && yE < h && yE > 0.0){
+        hh.t = tEnter; hh.p = ro + rd * tEnter; hh.c = c; hh.h = h;
+        hh.face = lastAxis < 0.5 ? 0 : 1;
+        hh.n = lastAxis < 0.5 ? vec3(-stp.x, 0.0, 0.0) : vec3(0.0, 0.0, -stp.y);
+        return true;
+      }
+      if (rd.y < 0.0 && yE >= h){
+        float tT = (h - ro.y) / rd.y;
+        if (tT >= tEnter && tT <= tExit){
+          hh.t = tT; hh.p = ro + rd * tT; hh.c = c; hh.h = h; hh.face = 2; hh.n = vec3(0,1,0);
+          return true;
+        }
+      }
+    } else if (rd.y < 0.0){
+      float tG = -ro.y / rd.y;
+      if (tG >= tEnter && tG <= tExit){
+        hh.t = tG; hh.p = ro + rd * tG; hh.c = c; hh.h = 0.0; hh.face = 3; hh.n = vec3(0,1,0);
+        return true;
+      }
+    }
+    if (tExit > tmax) return false;
+    if (sd.x < sd.y){ sd.x += dd.x; cell.x += stp.x; lastAxis = 0.0; }
+    else            { sd.y += dd.y; cell.y += stp.y; lastAxis = 1.0; }
+    tEnter = tExit;
+  }
+  return false;
+}
+
+/* ------------------------------ shading ---------------------------- */
+vec3 shadeCore(Hit hh, vec3 rd, out float emis, out int kind, out float wet, out float ink){
+  emis = 0.0; wet = 0.0; ink = 0.35; kind = K_FAC;
+  vec4 c   = hh.c;
+  int  gv  = int(c.g * 255.0 + 0.5);
+  int  pal = gv & 15;
+  int  sty = gv >> 4;
+  int  fl  = int(c.a * 255.0 + 0.5);
+  float dens = c.b;
+  vec3 base = uPal[pal];
+  vec3 col  = vec3(0.0);
+
+  if (hh.face <= 1){
+    /* ---------------- building facade ---------------- */
+    float u = hh.face == 0 ? hh.p.z : hh.p.x;
+    float v = hh.p.y;
+    float seed = hh.face == 0 ? 17.3 : 71.9;
+
+    if (sty == 6){                                   // animated sign tower
+      float seg = floor((v + uTime * 2.6) / 2.0);
+      float on  = step(0.42, h12(vec2(seg, floor(uTime * 2.5))));
+      float bu  = step(0.14, fract(u / 3.0));
+      col  = base * (0.14 + 2.6 * on * bu);
+      emis = on * bu * 1.7 + 0.08;
+      ink  = 0.35 + 0.62 * on * bu;
+      kind = K_SIGN;
+    } else if (sty == 7){                            // vertical garden
+      float f = fbm(vec2(u, v) * 0.55 + vec2(0.0, sin(uTime * 0.25 + u) * 0.04));
+      float leaf = smoothstep(0.40, 0.70, f);
+      col = mix(base * 0.22, vec3(0.12,0.62,0.26) * (0.55 + f), leaf);
+      float lan = step(0.985, h12(floor(vec2(u, v) / 3.0) + 2.2));
+      col += vec3(1.0,0.72,0.34) * lan * 1.5;
+      emis = lan * 1.3 + leaf * 0.10;
+      ink  = 0.30 + 0.55 * leaf + 0.4 * lan;
+      kind = K_PARK;
+    } else {
+      vec2 wsz = vec2(3.0, 3.6), ins = vec2(0.18, 0.20);
+      float dmul = 1.0;
+      if      (sty == 1){ wsz = vec2(1.5, 4.4); ins = vec2(0.04, 0.30); }
+      else if (sty == 2){ wsz = vec2(2.2, 2.6); ins = vec2(0.34, 0.06); }
+      else if (sty == 3){ wsz = vec2(3.4, 3.4); ins = vec2(0.20, 0.22); }
+      else if (sty == 4){ wsz = vec2(4.6, 4.8); ins = vec2(0.30, 0.32); dmul = 0.55; }
+      else if (sty == 5){ wsz = vec2(2.0, 2.0); ins = vec2(0.10, 0.10); }
+
+      vec2 g = vec2(u, v) / wsz;
+      if (sty == 3) g.x += 0.5 * step(0.5, fract(g.y * 0.5));
+      vec2 gid = floor(g), gf = fract(g), q = abs(gf - 0.5);
+      float win = step(q.x, 0.5 - ins.x) * step(q.y, 0.5 - ins.y);
+      float r   = h12(gid + seed);
+      float lit = step(1.0 - dens * dmul, r);
+      float flk = 1.0;
+      if (r > 0.93) flk = step(0.30, fract(uTime * 0.8 + r * 13.0));
+      if (h11(gid.x * 3.1 + gid.y * 7.7 + seed) > 0.985) flk *= step(0.5, fract(uTime * 7.0));
+      float w = win * lit * flk;
+
+      vec3 wc = base * (1.15 + 1.35 * h12(gid + 3.7));
+      if (h12(gid + 9.1) > 0.90) wc = mix(wc, vec3(1.0,0.85,0.60) * 1.7, 0.85);
+      // the concrete reads as a dim wash of the building's hue so the whole
+      // mass is legible in glyphs; unlit glass is a touch darker than the wall
+      float grain = 0.70 + 0.55 * h12(gid * 1.7 + 21.0);
+      col  = base * 0.44 * grain + base * 0.14 * win;
+      col  = mix(col, wc, w);
+      emis = w * (0.55 + 0.5 * h12(gid + 5.5));
+      // the concrete is typed at a steady mid density so the tower reads as a
+      // solid mass of characters; lit glass punches through it
+      ink  = 0.34 + 0.18 * grain + 0.10 * win + 0.50 * w;
+      kind = w > 0.5 ? K_WIN : K_FAC;
+    }
+
+    if (sty != 6){
+      // crown band at the roofline
+      float crown = smoothstep(hh.h - 2.6, hh.h - 1.1, v) * step(v, hh.h);
+      col  = mix(col, base * 2.1, crown * 0.92);
+      emis = max(emis, crown * 1.25);
+      ink  = max(ink, crown * 0.95);
+      if (crown > 0.5) kind = K_SIGN;
+
+      // street-level marquee
+      float band = step(1.6, v) * step(v, 4.1);
+      if (band > 0.0){
+        vec3 pc = uPal[(pal + 9) & 15];
+        float march = step(0.45, fract(u * 0.45 - uTime * 0.5 + h11(float(pal)) * 3.0));
+        float glass = step(0.30, fract(v * 1.1));            // shopfront mullions
+        col  = mix(col, pc * (0.30 + 1.5 * march) * glass, 0.90);
+        emis = max(emis, (0.3 + 0.8 * march) * glass);
+        ink  = max(ink, 0.45 + 0.5 * march * glass);
+        kind = K_SIGN;
+      }
+
+      // vertical neon strip
+      if ((fl & 32) != 0){
+        float strip = step(fract(u / 13.0), 0.10) * step(6.0, v) * step(v, hh.h - 3.0);
+        if (strip > 0.0){
+          vec3 sc = uPal[(pal + 5) & 15];
+          float blk = step(0.35, h12(vec2(floor((v - uTime * 5.0) / 1.8), 3.0)));
+          col  = mix(col, sc * (0.3 + 2.4 * blk), strip);
+          emis = max(emis, strip * (0.4 + 1.5 * blk));
+          ink  = max(ink, strip * (0.5 + 0.45 * blk));
+          kind = K_SIGN;
+        }
+      }
+    }
+    float ao = mix(0.72, 1.0, smoothstep(0.0, 8.0, v));      // ambient occlusion at the base
+    col *= ao;
+    ink *= mix(0.86, 1.0, ao);
+
+  } else if (hh.face == 2){
+    /* ------------------- rooftop ------------------- */
+    vec2 rp = hh.p.xz;
+    col = base * 0.20 + vec3(0.030,0.034,0.046);
+    col += base * 0.09 * (step(0.93, fract(rp.x * 0.5)) + step(0.93, fract(rp.y * 0.5)));
+    col += base * 0.10 * step(0.72, fbm(rp * 0.9));                       // vents and plant
+    vec2 fc = fract(rp / CS);
+    float par = smoothstep(0.40, 0.50, max(abs(fc.x - 0.5), abs(fc.y - 0.5)));
+    col += base * 0.30 * par;
+    emis = par * 0.12;
+    ink  = 0.16 + 0.30 * par + 0.22 * fbm(rp * 0.9);
+    if ((fl & 64) != 0){
+      float bl = step(0.62, fract(uTime * 0.5 + h11(floor(rp.x * 0.1))));
+      float d  = length(fc - 0.5);
+      float bp = smoothstep(0.22, 0.05, d) * bl;
+      col += vec3(1.0,0.10,0.06) * bp * 3.0;
+      emis = max(emis, bp * 2.0);
+      ink  = max(ink, bp);
+    }
+    kind = K_ROOF;
+
+  } else {
+    /* -------------------- ground -------------------- */
+    vec2 pw = hh.p.xz;
+    vec2 cf = floor(pw / CS), fc = fract(pw / CS);
+
+    if ((fl & 16) != 0){                                       // canal water
+      float rip = fbm(pw * 0.30 + vec2(uTime * 0.12, uTime * 0.21));
+      col = vec3(0.016,0.052,0.082) * (0.55 + 0.9 * rip);
+      wet = 1.0; ink = 0.10 + 0.30 * rip; kind = K_WATER;
+    } else if ((fl & 8) != 0){                                 // park ground
+      float f = fbm(pw * 0.55);
+      col = mix(vec3(0.030,0.090,0.040), vec3(0.060,0.240,0.090), f);
+      float lamp = step(0.992, h12(cf + 4.4)) * smoothstep(0.30, 0.06, length(fc - 0.5));
+      col += vec3(0.9,0.75,0.4) * lamp * 2.2;
+      emis = lamp * 1.6;
+      wet  = 0.10 * uWet;
+      ink  = 0.22 + 0.45 * f + lamp;
+      kind = K_PARK;
+    } else {                                                    // street / plaza
+      float grit = fbm(pw * 1.7);
+      col  = vec3(0.055,0.060,0.078) * (0.5 + 0.9 * grit);
+      kind = K_ROAD;
+      float road = float((fl & 1) != 0);
+
+      // glowing kerb / lane rails on every cell boundary
+      float rail = smoothstep(0.455, 0.50, max(abs(fc.x - 0.5), abs(fc.y - 0.5)));
+      col += vec3(0.05,0.32,0.42) * rail * (0.35 + 0.65 * road);
+      emis = rail * 0.35;
+      ink  = 0.14 + 0.20 * grit + 0.52 * rail;
+
+      if ((fl & 128) != 0){                                     // plaza tiling
+        float t = step(0.92, fract(pw.x * 0.7)) + step(0.92, fract(pw.y * 0.7));
+        col += vec3(0.06,0.10,0.14) * t;
+      }
+
+      // centre-line dashes
+      if ((fl & 2) != 0){
+        float cz = (cf.y + 0.5) * CS;
+        col += vec3(0.5,0.45,0.20) * step(0.62, fract(pw.x * 0.16)) * smoothstep(0.32, 0.10, abs(pw.y - cz)) * 0.5;
+      }
+      if ((fl & 4) != 0){
+        float cx = (cf.x + 0.5) * CS;
+        col += vec3(0.5,0.45,0.20) * step(0.62, fract(pw.y * 0.16)) * smoothstep(0.32, 0.10, abs(pw.x - cx)) * 0.5;
+      }
+
+      // traffic: analytic light streams down every lane
+      for (int a = 0; a < 2; a++){
+        bool along = a == 0;
+        if (along  && (fl & 2) == 0) continue;
+        if (!along && (fl & 4) == 0) continue;
+        float lane0 = ((along ? cf.y : cf.x) + 0.5) * CS;
+        float rowSeed = h11((along ? cf.y : cf.x) * 13.7 + float(a) * 5.1);
+        if (rowSeed < 0.22) continue;
+        for (int k = 0; k < 2; k++){
+          float dir = k == 0 ? 1.0 : -1.0;
+          float lz  = lane0 + dir * 1.15;
+          float lat = (along ? pw.y : pw.x) - lz;
+          float s   = (along ? pw.x : pw.y) * dir;
+          float SP  = 26.0;
+          float ph  = fract(s / SP - uTime * 0.60 + rowSeed + float(k) * 0.37);
+          float ln  = (ph - 0.5) * SP;
+          float body = exp(-ln * ln * 0.55) * exp(-lat * lat * 3.2);
+          float beam = exp(-max(0.0, -ln) * 0.11) * exp(-lat * lat * 1.1) * 0.20;
+          vec3 lc = k == 0 ? vec3(0.85,0.93,1.0) : vec3(1.0,0.16,0.10);
+          col  += lc * (body * 2.4 + beam);
+          emis  = max(emis, body * 1.9 + beam * 0.7);
+          ink   = max(ink, body * 1.4 + beam * 0.8);
+        }
+      }
+      wet = uWet * smoothstep(0.46, 0.66, fbm(pw * 0.17));   // discrete puddles, not a mirror floor
+    }
+  }
+  return col;
+}
+
+void main(){
+  vec2 uv = vUv * 2.0 - 1.0;
+  float cy = cos(uAng.x), sy = sin(uAng.x), cp = cos(uAng.y), sp = sin(uAng.y);
+  vec3 fw = vec3(sy * cp, sp, -cy * cp);
+  vec3 rt = vec3(cy, 0.0, sy);
+  vec3 up = cross(rt, fw);
+  vec3 rd = normalize(fw + rt * (uv.x * uAspect * uTanFov) + up * (uv.y * uTanFov));
+
+  vec3  col;
+  float emis = 0.0, dep = 1.0, ink = 0.0;
+  int   kind = K_SKY;
+  Hit   hh;
+
+  if (trace(uCam, rd, uSteps, MAXD, hh)){
+    float wet;
+    col = shadeCore(hh, rd, emis, kind, wet, ink);
+
+    if (uRefl == 1 && hh.face == 3 && wet > 0.02){
+      vec3 rrd = vec3(rd.x, -rd.y, rd.z);
+      vec3 rc;
+      Hit h2;
+      if (trace(hh.p + vec3(0.0, 0.03, 0.0), rrd, uSteps / 2, 220.0, h2)){
+        float e2, w2, i2; int k2;
+        rc = shadeCore(h2, rrd, e2, k2, w2, i2);
+        rc = mix(skyCol(rrd) * 0.8, rc, exp(-h2.t * uFogK));
+      } else rc = skyCol(rrd);
+      float fres = 0.04 + 0.96 * pow(1.0 - clamp(-rd.y, 0.0, 1.0), 5.0);
+      float m = clamp(wet * fres * 0.85, 0.0, 0.62);
+      col  = mix(col, col * 0.55 + rc * 0.80, m);
+      emis = max(emis, m * 0.30);
+      ink  = max(ink, m * 0.55);
+    }
+
+    float fogf = exp(-hh.t * uFogK);
+    col  = mix(skyCol(rd) * 0.85, col, fogf);
+    emis *= fogf;
+    ink  *= pow(fogf, 0.8);              // the far city thins out into blank paper
+    dep   = clamp(hh.t / MAXD, 0.0, 1.0);
+  } else {
+    col = skyCol(rd);
+    ink = smoothstep(0.30, 0.85, dot(col, vec3(2.2)));   // only stars and the moon print
+  }
+
+  // rain veil
+  col += vec3(0.05,0.07,0.11) * uRainAmt * (1.0 - dep) * 0.25;
+  col += vec3(0.30,0.34,0.45) * uFlash * 0.55;
+
+  vec3 t = col / (1.0 + col);
+  t = pow(max(t, 0.0), vec3(0.86));
+  // glyph density is art-directed per material, then nudged by actual brightness
+  float lum = clamp(ink * 0.82 + smoothstep(0.02, 0.75, dot(t, vec3(0.299,0.587,0.114))) * 0.34
+                    + uFlash * 0.10, 0.0, 1.0);
+
+  oCol = vec4(t, clamp(emis * 0.6, 0.0, 1.0));
+  oInf = vec4(lum, float(kind) / 15.0, dep, 1.0);
+}`;
+
+/* ─────────────────────────── PASS 2 — BLOOM ──────────────────────────── */
+const FS_BLOOM = `#version 300 es
+precision highp float;
+in vec2 vUv;
+out vec4 oCol;
+uniform sampler2D uSrc;
+uniform vec2 uTexel;
+uniform int  uPre;
+void main(){
+  float w[5];
+  w[0] = 0.2270; w[1] = 0.1945; w[2] = 0.1216; w[3] = 0.0540; w[4] = 0.0162;
+  vec3 s = vec3(0.0);
+  for (int i = -4; i <= 4; i++){
+    vec4 c = texture(uSrc, vUv + uTexel * float(i));
+    vec3 v = uPre == 1 ? c.rgb * c.a : c.rgb;
+    s += v * w[i < 0 ? -i : i];
+  }
+  oCol = vec4(s, 1.0);
+}`;
+
+/* ─────────────────────── PASS 3 — GLYPH SELECTION ────────────────────── */
+const FS_GLYPH = `#version 300 es
+precision highp float;
+precision highp int;
+out vec4 oCol;
+uniform sampler2D uColT, uInfT, uRamp;
+uniform vec2  uCells;
+uniform float uTime, uEdge, uGamma, uRain, uSat;
+uniform int   uRainGlyph, uMode;
+uniform ivec2 uSub;
+
+float bayer(ivec2 p){
+  int i = (p.y & 3) * 4 + (p.x & 3);
+  float m[16] = float[16](0.0, 8.0, 2.0,10.0, 12.0, 4.0,14.0, 6.0,
+                          3.0,11.0, 1.0, 9.0, 15.0, 7.0,13.0, 5.0);
+  return (m[i] + 0.5) / 16.0;
+}
+
+float h11(float p){ p = fract(p * 0.1031); p *= p + 33.33; p *= p + p; return fract(p); }
+float h12(vec2 p){ vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+
+ivec2 cl(ivec2 p){ return clamp(p, ivec2(0), ivec2(uCells) - 1); }
+float lumAt(ivec2 p){ return texelFetch(uInfT, cl(p), 0).r; }
+float depAt(ivec2 p){ return texelFetch(uInfT, cl(p), 0).b; }
+int   glyphAt(int level, int kind){ return int(texelFetch(uRamp, ivec2(level, kind), 0).r * 255.0 + 0.5); }
+
+void main(){
+  ivec2 id = ivec2(gl_FragCoord.xy);
+
+  /* ---- sub-cell mode: print the glyph whose dot pattern matches ---- */
+  if (uMode == 1){
+    ivec2 b = id * uSub;
+    vec3 acc = vec3(0.0);
+    float n = 0.0, lsum = 0.0;
+    int bits = 0;
+    for (int j = 0; j < 4; j++){
+      if (j >= uSub.y) break;
+      for (int i = 0; i < 2; i++){
+        if (i >= uSub.x) break;
+        ivec2 q = b + ivec2(i, uSub.y - 1 - j);       // texture rows run bottom-up
+        float sl = texelFetch(uInfT, q, 0).r;
+        acc += texelFetch(uColT, q, 0).rgb;
+        lsum += sl; n += 1.0;
+        if (sl > 0.12 + 0.74 * bayer(b + ivec2(i, j))) bits |= 1 << (j * uSub.x + i);
+      }
+    }
+    vec3 cc = acc / max(n, 1.0);
+    float ll = lsum / max(n, 1.0);
+    if (uRain > 0.0){
+      float colId = float(id.x) + floor(float(id.y) * 0.5);
+      float row   = floor(float(id.y) + uTime * 46.0 + h11(colId) * 60.0);
+      if (h12(vec2(colId, row)) > 1.0 - 0.011 * uRain && ll < 0.5){
+        bits |= uSub.x * uSub.y >= 8 ? 0x33 : 0x9;    // a short slanted stroke
+        cc = mix(cc, vec3(0.40,0.60,0.85), 0.6);
+      }
+    }
+    cc = cc * (0.85 + 0.55 * smoothstep(0.0, 0.6, ll));   // dots carry shape, colour carries tone
+    float l2 = dot(cc, vec3(0.299, 0.587, 0.114));
+    cc = mix(vec3(l2), cc, uSat);
+    oCol = vec4(cc, float(bits) / 255.0);
+    return;
+  }
+
+  vec4 inf = texelFetch(uInfT, id, 0);
+  vec3 c   = texelFetch(uColT, id, 0).rgb;
+  float lum = inf.r;
+  int  kind = int(inf.g * 15.0 + 0.5);
+
+  float lgx = (lumAt(id + ivec2(-1,-1)) + 2.0 * lumAt(id + ivec2(-1,0)) + lumAt(id + ivec2(-1,1)))
+            - (lumAt(id + ivec2( 1,-1)) + 2.0 * lumAt(id + ivec2( 1,0)) + lumAt(id + ivec2( 1,1)));
+  float lgy = (lumAt(id + ivec2(-1,-1)) + 2.0 * lumAt(id + ivec2(0,-1)) + lumAt(id + ivec2(1,-1)))
+            - (lumAt(id + ivec2(-1, 1)) + 2.0 * lumAt(id + ivec2(0, 1)) + lumAt(id + ivec2(1, 1)));
+  float dgx = depAt(id + ivec2(-1,0)) - depAt(id + ivec2(1,0));
+  float dgy = depAt(id + ivec2(0,-1)) - depAt(id + ivec2(0,1));
+
+  float le = length(vec2(lgx, lgy));
+  float de = length(vec2(dgx, dgy));
+  float edge = max(le * 0.75, de * 9.0);
+
+  int lv = int(clamp(pow(lum, uGamma), 0.0, 1.0) * 15.0 + 0.5);
+  int gi = glyphAt(lv, kind);
+
+  if (edge > uEdge && lum > 0.012){
+    float gx = abs(dgx) + abs(dgy) > 0.004 ? dgx : lgx;
+    float gy = abs(dgx) + abs(dgy) > 0.004 ? dgy : lgy;
+    float ang = mod(atan(gy, gx) + 1.5707963 + 6.2831853, 3.1415926);
+    int q = int(mod(floor(ang / 0.7853981 + 0.5), 4.0));
+    gi = glyphAt(q, 15);
+    c *= 1.12;
+  }
+
+  // rain: sparse slanted streaks over dim cells
+  if (uRain > 0.0){
+    float colId = float(id.x) + floor(float(id.y) * 0.5);
+    float row   = floor(float(id.y) + uTime * 46.0 + h11(colId) * 60.0);
+    if (h12(vec2(colId, row)) > 1.0 - 0.011 * uRain && lum < 0.55){
+      gi = uRainGlyph;
+      c  = mix(c, vec3(0.40,0.60,0.85), 0.72);
+    }
+  }
+
+  float l = dot(c, vec3(0.299, 0.587, 0.114));
+  c = mix(vec3(l), c, uSat);
+  oCol = vec4(c, float(gi) / 255.0);
+}`;
+
+/* ───────────────────────── PASS 4 — COMPOSITE ────────────────────────── */
+const FS_COMP = `#version 300 es
+precision highp float;
+precision highp int;
+in vec2 vUv;
+out vec4 oCol;
+uniform sampler2D uCellT, uAtlas, uBloom;
+uniform vec2  uCellPx, uCells, uRes, uGrid;
+uniform float uBloomAmt, uScan, uVig, uAber, uFlash;
+
+void main(){
+  vec2 fc = gl_FragCoord.xy;
+  vec2 cf = fc / uCellPx;
+  ivec2 id = clamp(ivec2(floor(cf)), ivec2(0), ivec2(uCells) - 1);
+  vec4 cd = texelFetch(uCellT, id, 0);
+  int gi = int(cd.a * 255.0 + 0.5);
+
+  vec2 f = fract(cf);
+  f.y = 1.0 - f.y;
+  f = clamp(f, vec2(0.002), vec2(0.998));
+  vec2 tile = vec2(float(gi - (gi / int(uGrid.x)) * int(uGrid.x)), floor(float(gi) / uGrid.x));
+  vec2 auv = (tile + f) / uGrid;
+
+  float g  = texture(uAtlas, auv).r;
+  float gr = texture(uAtlas, vec2(clamp(auv.x + uAber / uGrid.x, (tile.x + 0.002) / uGrid.x, (tile.x + 0.998) / uGrid.x), auv.y)).r;
+  float gb = texture(uAtlas, vec2(clamp(auv.x - uAber / uGrid.x, (tile.x + 0.002) / uGrid.x, (tile.x + 0.998) / uGrid.x), auv.y)).r;
+
+  vec3 bloom = texture(uBloom, fc / uRes).rgb;
+  vec3 col = cd.rgb * vec3(gr, g, gb) + bloom * uBloomAmt + bloom * 0.16;
+
+  col *= 1.0 - uScan * 0.45 * (0.5 + 0.5 * sin(fc.y * 3.1415926));
+  vec2 v = vUv * 2.0 - 1.0;
+  col *= 1.0 - uVig * dot(v, v) * 0.34;
+  col += uFlash * 0.05;
+  oCol = vec4(pow(max(col, 0.0), vec3(0.95)), 1.0);
+}`;
+
+/* ═══════════════════════════ GL RESOURCES ═════════════════════════════ */
+const P_SCENE = prog(FS_SCENE);
+const P_BLOOM = prog(FS_BLOOM);
+const P_GLYPH = prog(FS_GLYPH);
+const P_COMP  = prog(FS_COMP);
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+
+function mkTex(w, h, filter, wrap, internal, format, type, data){
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, internal || gl.RGBA8, w, h, 0, format || gl.RGBA, type || gl.UNSIGNED_BYTE, data || null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+  return t;
+}
+
+// city texture
+const cityTex = gl.createTexture();
+function uploadCity(city){
+  gl.bindTexture(gl.TEXTURE_2D, cityTex);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, city.tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+}
+
+// glyph ramp LUT: 16 levels x 16 kinds (row 15 holds the four edge glyphs)
+const rampTex = mkTex(16, 16, gl.NEAREST, gl.CLAMP_TO_EDGE, gl.R8, gl.RED, gl.UNSIGNED_BYTE, new Uint8Array(256));
+function rebuildRamp(){
+  const a = A();
+  const data = new Uint8Array(16 * 16);
+  if (a.mode === 'ramp'){
+    const gi = {}; a.glyphs.forEach((g, i) => { if (!(g in gi)) gi[g] = i; });
+    for (const k in a.ramps){
+      const chars = a.ramps[k];
+      for (let i = 0; i < 16; i++){
+        const c = chars[Math.min(chars.length - 1, Math.round(i / 15 * (chars.length - 1)))];
+        data[(+k) * 16 + i] = gi[c] !== undefined ? gi[c] : 0;
+      }
+    }
+    for (let i = 0; i < 16; i++) data[15 * 16 + i] = gi[a.edges[Math.min(3, i)]] || 0;
+  }
+  gl.bindTexture(gl.TEXTURE_2D, rampTex);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 16, 16, gl.RED, gl.UNSIGNED_BYTE, data);
+}
+
+// glyph atlas, rasterised from the system monospace font at exact cell size
+let atlasTex = gl.createTexture();
+const atlasCanvas = document.createElement('canvas');
+function fontOf(cw, ch){
+  const fpx = Math.max(6, Math.min(cw / 0.60, ch * 0.96));
+  return '700 ' + fpx.toFixed(2) + 'px ' + getComputedStyle(document.body).getPropertyValue('--mono');
+}
+// a glyph the platform cannot draw comes back as blank or tofu; probe before offering it
+function alphabetSupported(a){
+  const c = document.createElement('canvas'); c.width = 24; c.height = 32;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0, 0, 24, 32);
+  x.font = fontOf(18, 30); x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff';
+  x.fillText(a.probe, 12, 16);
+  const d = x.getImageData(0, 0, 24, 32).data;
+  let ink = 0;
+  for (let i = 0; i < d.length; i += 4) if (d[i] > 40) ink++;
+  return ink > 6;
+}
+function buildAtlas(cw, ch){
+  const glyphs = A().glyphs, rows = gridRows();
+  const c = atlasCanvas;
+  c.width = GRID_COLS * cw; c.height = rows * ch;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0, 0, c.width, c.height);
+  x.font = fontOf(cw, ch);
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillStyle = '#fff';
+  for (let i = 0; i < glyphs.length; i++){
+    const gx = (i % GRID_COLS) * cw, gy = Math.floor(i / GRID_COLS) * ch;
+    x.fillText(glyphs[i], gx + cw / 2, gy + ch / 2 + ch * 0.02);
+  }
+  gl.bindTexture(gl.TEXTURE_2D, atlasTex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, c);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+}
+
+// render targets
+let RT = null;
+function makeTargets(cols, rows){
+  if (RT){ RT.fbs.forEach(f => gl.deleteFramebuffer(f)); RT.texs.forEach(t => gl.deleteTexture(t)); }
+  const [sx, sy] = A().sub;
+  const sw = cols * sx, sh = rows * sy;
+  const colT = mkTex(sw, sh, gl.LINEAR,  gl.CLAMP_TO_EDGE);
+  const infT = mkTex(sw, sh, gl.NEAREST, gl.CLAMP_TO_EDGE);
+  const cellT = mkTex(cols, rows, gl.NEAREST, gl.CLAMP_TO_EDGE);
+  const bw = Math.max(2, sw >> 1), bh = Math.max(2, sh >> 1);
+  const b1 = mkTex(bw, bh, gl.LINEAR, gl.CLAMP_TO_EDGE);
+  const b2 = mkTex(bw, bh, gl.LINEAR, gl.CLAMP_TO_EDGE);
+
+  const fbScene = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbScene);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colT, 0);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, infT, 0);
+  gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+
+  const mk1 = (t) => { const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0]); return f; };
+  const fbB1 = mk1(b1), fbB2 = mk1(b2), fbCell = mk1(cellT);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+  RT = { cols, rows, sw, sh, sx, sy, bw, bh, colT, infT, cellT, b1, b2, fbScene, fbB1, fbB2, fbCell,
+         fbs:[fbScene, fbB1, fbB2, fbCell], texs:[colT, infT, cellT, b1, b2] };
+}
+
+/* ═════════════════════════════ VIEW STATE ═════════════════════════════ */
+const S = {
+  cellW: 9, cellH: 16, dpr: 1, cols: 0, rows: 0,
+  quality: 3, autoQuality: true,
+  steps: 220, refl: 1, bloom: 0.42, rain: 1.0, wet: 0.85,
+  sat: 1.16, gamma: 1.10, edge: 0.46, scan: 0.30, vig: 0.60, aber: 0.05,
+  fov: 72, fogK: 0.0056, hud: true, sound: false, running: false
+};
+
+const player = {
+  x: 0, y: 1.78, z: 0, yaw: 0, pitch: 0,
+  vx: 0, vz: 0, vy: 0, bob: 0, fly: false, sprint: false, speed: 0
+};
+
+function targetColumns(cssW){
+  // a column count that stays readable at arm's length on any display
+  return cssW < 500 ? 96 : cssW < 820 ? 132 : cssW < 1400 ? 190 : 240;
+}
+
+let glyphScale = 1.0;
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(320, Math.floor(window.innerWidth  * dpr));
+  const h = Math.max(240, Math.floor(window.innerHeight * dpr));
+  canvas.width = w; canvas.height = h;
+  S.dpr = dpr;
+  const base = (window.innerWidth / targetColumns(window.innerWidth)) * dpr;
+  S.cellW = Math.max(4, Math.round(base * glyphScale));
+  S.cellH = Math.max(7, Math.round(S.cellW * 1.85));
+  S.cols = Math.max(8, Math.ceil(w / S.cellW));
+  S.rows = Math.max(6, Math.ceil(h / S.cellH));
+  buildAtlas(S.cellW, S.cellH);
+  rebuildRamp();
+  makeTargets(S.cols, S.rows);
+}
+function setAlphabet(i){
+  const n = ALPHABETS.length;
+  for (let k = 0; k < n; k++){
+    const cand = ((i % n) + n) % n;
+    if (ALPHABETS[cand].ok !== false){ ALPHA = cand; resize(); toast('ALPHABET: ' + A().name); return; }
+    i++;
+  }
+}
+
+/* ═════════════════════════════ CITY QUERY ═════════════════════════════ */
+const wrapCell = v => ((v % N) + N) % N;
+function heightAtWorld(wx, wz){
+  const cx = wrapCell(Math.floor(wx / CELLSZ)), cz = wrapCell(Math.floor(wz / CELLSZ));
+  return CITY.hgt[cz * N + cx] * HSTEP;
+}
+function flagsAtWorld(wx, wz){
+  const cx = wrapCell(Math.floor(wx / CELLSZ)), cz = wrapCell(Math.floor(wz / CELLSZ));
+  return CITY.flags[cz * N + cx];
+}
+function districtAtWorld(wx, wz){
+  const cx = wrapCell(Math.floor(wx / CELLSZ)), cz = wrapCell(Math.floor(wz / CELLSZ));
+  return DISTRICTS[CITY.dist[cz * N + cx]].name;
+}
+function blocked(wx, wz){
+  return heightAtWorld(wx, wz) > 0.1 || (flagsAtWorld(wx, wz) & FLAG.WATER) !== 0;
+}
+
+/* ═══════════════════════════════ INPUT ════════════════════════════════ */
+const keys = Object.create(null);
+let mouseLook = false;
+const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+
+addEventListener('keydown', e => {
+  if (e.repeat){ keys[e.code] = true; return; }
+  keys[e.code] = true;
+  switch (e.code){
+    case 'KeyF': player.fly = !player.fly; player.vy = 0; toast(player.fly ? 'DRONE MODE' : 'STREET MODE'); break;
+    case 'KeyM': toggleSound(); break;
+    case 'KeyP': S.hud = !S.hud; applyHud(); break;
+    case 'KeyC': copyFrame(); break;
+    case 'KeyG': savePng(); break;
+    case 'KeyR': newCity((Math.random() * 1e9) | 0); break;
+    case 'KeyH': document.getElementById('boot').classList.toggle('off'); break;
+    case 'KeyV': setAlphabet(ALPHA + 1); break;
+    case 'KeyB': S.bloom = S.bloom > 0 ? 0 : 1.0; toast('BLOOM ' + (S.bloom ? 'ON' : 'OFF')); break;
+    case 'KeyL': S.refl = S.refl ? 0 : 1; toast('REFLECTIONS ' + (S.refl ? 'ON' : 'OFF')); break;
+    case 'KeyN': S.rain = S.rain > 0 ? 0 : 1; toast('RAIN ' + (S.rain ? 'ON' : 'OFF')); break;
+    case 'BracketLeft':  glyphScale = clamp(glyphScale * 1.18, 0.5, 4); resize(); toast('GLYPH ' + S.cellW + 'px'); break;
+    case 'BracketRight': glyphScale = clamp(glyphScale / 1.18, 0.5, 4); resize(); toast('GLYPH ' + S.cellW + 'px'); break;
+    case 'Digit1': case 'Digit2': case 'Digit3': case 'Digit4':
+      S.autoQuality = false; setQuality(+e.code.slice(5) - 1); toast('QUALITY ' + QNAME[S.quality]); break;
+  }
+}, { passive:true });
+addEventListener('keyup', e => { keys[e.code] = false; }, { passive:true });
+
+canvas.addEventListener('click', () => { if (!isTouch && S.running) canvas.requestPointerLock(); });
+document.addEventListener('pointerlockchange', () => { mouseLook = document.pointerLockElement === canvas; });
+addEventListener('mousemove', e => {
+  if (!mouseLook) return;
+  player.yaw   += e.movementX * 0.0022;
+  player.pitch -= e.movementY * 0.0022;
+  player.pitch = clamp(player.pitch, -1.45, 1.45);
+});
+
+/* ---- touch: left stick moves, right half looks ---- */
+const touch = { move:null, look:null, mx:0, my:0, run:false };
+const knob = document.getElementById('knob');
+const stickEl = document.getElementById('stick');
+if (isTouch) document.getElementById('touch').style.display = 'block';
+
+function stickCenter(){ const r = stickEl.getBoundingClientRect(); return [r.left + r.width/2, r.top + r.height/2]; }
+addEventListener('touchstart', e => {
+  for (const t of e.changedTouches){
+    const [cx, cy] = stickCenter();
+    const near = Math.hypot(t.clientX - cx, t.clientY - cy) < 130;
+    if (near && touch.move === null) touch.move = t.identifier;
+    else if (touch.look === null) { touch.look = t.identifier; touch.lx = t.clientX; touch.ly = t.clientY; }
+  }
+}, { passive:true });
+addEventListener('touchmove', e => {
+  for (const t of e.changedTouches){
+    if (t.identifier === touch.move){
+      const [cx, cy] = stickCenter();
+      let dx = (t.clientX - cx) / 52, dy = (t.clientY - cy) / 52;
+      const m = Math.hypot(dx, dy); if (m > 1){ dx /= m; dy /= m; }
+      touch.mx = dx; touch.my = -dy;
+      knob.style.transform = 'translate(' + (dx * 34) + 'px,' + (-touch.my * 34) + 'px)';
+    } else if (t.identifier === touch.look){
+      player.yaw   += (t.clientX - touch.lx) * 0.006;
+      player.pitch -= (t.clientY - touch.ly) * 0.006;
+      player.pitch = clamp(player.pitch, -1.45, 1.45);
+      touch.lx = t.clientX; touch.ly = t.clientY;
+    }
+  }
+}, { passive:true });
+function endTouch(e){
+  for (const t of e.changedTouches){
+    if (t.identifier === touch.move){ touch.move = null; touch.mx = 0; touch.my = 0; knob.style.transform = ''; }
+    if (t.identifier === touch.look) touch.look = null;
+  }
+}
+addEventListener('touchend', endTouch, { passive:true });
+addEventListener('touchcancel', endTouch, { passive:true });
+document.getElementById('bRun').addEventListener('touchstart', e => { e.stopPropagation(); touch.run = !touch.run; }, { passive:true });
+document.getElementById('bFly').addEventListener('touchstart', e => {
+  e.stopPropagation(); player.fly = !player.fly; player.vy = 0; toast(player.fly ? 'DRONE MODE' : 'STREET MODE');
+}, { passive:true });
+document.getElementById('bSet').addEventListener('touchstart', e => {
+  e.stopPropagation(); setAlphabet(ALPHA + 1);
+}, { passive:true });
+
+/* ═════════════════════════════ MOVEMENT ═══════════════════════════════ */
+function updatePlayer(dt){
+  let fwd = 0, str = 0, up = 0;
+  if (keys.KeyW || keys.ArrowUp)    fwd += 1;
+  if (keys.KeyS || keys.ArrowDown)  fwd -= 1;
+  if (keys.KeyD || keys.ArrowRight) str += 1;
+  if (keys.KeyA || keys.ArrowLeft)  str -= 1;
+  if (keys.Space)     up += 1;
+  if (keys.ShiftLeft || keys.ShiftRight) player.sprint = true; else player.sprint = false;
+  if (keys.ControlLeft || keys.KeyQ) up -= 1;
+  fwd += touch.my; str += touch.mx;
+
+  // gamepad
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  for (const gp of pads){
+    if (!gp) continue;
+    const dz = v => Math.abs(v) < 0.15 ? 0 : v;
+    str += dz(gp.axes[0] || 0); fwd -= dz(gp.axes[1] || 0);
+    player.yaw   += dz(gp.axes[2] || 0) * 2.4 * dt;
+    player.pitch -= dz(gp.axes[3] || 0) * 1.8 * dt;
+    player.pitch = clamp(player.pitch, -1.45, 1.45);
+    if (gp.buttons[6] && gp.buttons[6].pressed) player.sprint = true;
+    if (gp.buttons[0] && gp.buttons[0].pressed) up += 1;
+    break;
+  }
+  if (touch.run) player.sprint = true;
+
+  const m = Math.hypot(fwd, str);
+  if (m > 1){ fwd /= m; str /= m; }
+
+  const sy = Math.sin(player.yaw), cy = Math.cos(player.yaw);
+  let dirX = sy * fwd + cy * str;
+  let dirZ = -cy * fwd + sy * str;
+
+  const base = player.fly ? 34 : 7.2;
+  const spd  = base * (player.sprint ? 2.4 : 1);
+  const accel = player.fly ? 6 : 12;
+  player.vx += (dirX * spd - player.vx) * Math.min(1, accel * dt);
+  player.vz += (dirZ * spd - player.vz) * Math.min(1, accel * dt);
+
+  const nx = player.x + player.vx * dt, nz = player.z + player.vz * dt;
+  const r = 0.55;
+
+  if (player.fly){
+    // in drone mode the forward axis follows the pitch, so you fly where you look
+    player.x = nx; player.z = nz;
+    const climb = Math.sin(player.pitch) * spd * fwd + up * 26;
+    player.vy += (climb - player.vy) * Math.min(1, 5 * dt);
+    player.y += player.vy * dt;
+    player.y = clamp(player.y, 1.2, 460);
+  } else {
+    // axis-separated collision against the height field
+    if (!blocked(nx + Math.sign(player.vx) * r, player.z) && !blocked(nx, player.z + r) && !blocked(nx, player.z - r)) player.x = nx;
+    else player.vx *= -0.15;
+    if (!blocked(player.x, nz + Math.sign(player.vz) * r) && !blocked(player.x + r, nz) && !blocked(player.x - r, nz)) player.z = nz;
+    else player.vz *= -0.15;
+    const sp = Math.hypot(player.vx, player.vz);
+    player.bob += dt * sp * 1.5;
+    player.y = 1.78 + Math.sin(player.bob * 2.0) * 0.045 * Math.min(1, sp / 6);
+  }
+  player.speed = Math.hypot(player.vx, player.vz);
+  if (Math.abs(player.x) > 40000) player.x = 0;
+  if (Math.abs(player.z) > 40000) player.z = 0;
+}
+
+/* ═════════════════════════════ QUALITY ════════════════════════════════ */
+const QNAME = ['LOW', 'MED', 'HIGH', 'ULTRA'];
+function setQuality(q){
+  S.quality = clamp(q | 0, 0, 3);
+  S.steps = [72, 120, 180, 250][S.quality];
+  S.refl  = S.quality >= 1 ? 1 : 0;
+  S.bloom = S.quality >= 1 ? 0.42 : 0.24;
+}
+setQuality(isTouch ? 2 : 3);
+
+/* ═══════════════════════════════ AUDIO ════════════════════════════════ */
+let AC = null, audioNodes = null;
+function initAudio(){
+  if (AC) return;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return;
+  AC = new Ctx();
+  const master = AC.createGain(); master.gain.value = 0.0; master.connect(AC.destination);
+
+  // rain: filtered noise
+  const len = AC.sampleRate * 2;
+  const buf = AC.createBuffer(1, len, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const noise = AC.createBufferSource(); noise.buffer = buf; noise.loop = true;
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600;
+  const hp = AC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 380;
+  const rg = AC.createGain(); rg.gain.value = 0.22;
+  noise.connect(hp); hp.connect(lp); lp.connect(rg); rg.connect(master); noise.start();
+
+  // city drone
+  const dg = AC.createGain(); dg.gain.value = 0.09;
+  const df = AC.createBiquadFilter(); df.type = 'lowpass'; df.frequency.value = 240;
+  df.connect(dg); dg.connect(master);
+  [42, 63, 84.5].forEach((f, i) => {
+    const o = AC.createOscillator(); o.type = i === 2 ? 'triangle' : 'sawtooth';
+    o.frequency.value = f; const g = AC.createGain(); g.gain.value = 0.35 / (i + 1);
+    o.connect(g); g.connect(df); o.start();
+  });
+  audioNodes = { master };
+}
+function toggleSound(){
+  initAudio();
+  if (!AC) return;
+  if (AC.state === 'suspended') AC.resume();
+  S.sound = !S.sound;
+  audioNodes.master.gain.setTargetAtTime(S.sound ? 0.7 : 0.0, AC.currentTime, 0.15);
+  toast('SOUND ' + (S.sound ? 'ON' : 'OFF'));
+}
+function thunder(){
+  if (!AC || !S.sound) return;
+  const t = AC.currentTime;
+  const len = AC.sampleRate * 2.2;
+  const buf = AC.createBuffer(1, len, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.4);
+  const src = AC.createBufferSource(); src.buffer = buf;
+  const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 320;
+  const g = AC.createGain(); g.gain.value = 0.0;
+  g.gain.setValueAtTime(0.0, t); g.gain.linearRampToValueAtTime(0.9, t + 0.05);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 2.2);
+  src.connect(f); f.connect(g); g.connect(audioNodes.master); src.start(t + 0.35);
+}
+
+/* ═══════════════════════════════ HUD ══════════════════════════════════ */
+const tl = document.getElementById('tl'), bl = document.getElementById('bl'),
+      mapC = document.getElementById('map'), mapX = mapC.getContext('2d');
+const toastEl = document.getElementById('toast');
+let toastT = 0;
+function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('on'); toastT = performance.now() + 1400; }
+function applyHud(){
+  const v = S.hud ? '1' : '0';
+  tl.style.opacity = v; bl.style.opacity = v; mapC.style.opacity = v;
+  if (isTouch) document.getElementById('touch').style.opacity = v;
+}
+const COMPASS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+
+let fpsEMA = 60;
+function updateHud(){
+  const brg = ((-player.yaw * 180 / Math.PI) % 360 + 360) % 360;
+  const cmp = COMPASS[Math.round(brg / 22.5) % 16];
+  tl.innerHTML =
+    '<div class="t">NOCTIS-7</div>' +
+    '<div><span class="k">SEED</span> ' + CITY.seed.toString(16).toUpperCase().padStart(8,'0') +
+      ' <span class="k">GRID</span> ' + S.cols + 'x' + S.rows +
+      ' <span class="k">SET</span> <span class="d">' + A().name + '</span>' +
+      ' <span class="k">Q</span> ' + QNAME[S.quality] + (S.autoQuality ? '*' : '') +
+      ' <span class="k">FPS</span> ' + fpsEMA.toFixed(0) + '</div>' +
+    '<div><span class="k">POS</span> ' + player.x.toFixed(1) + ' ' + player.y.toFixed(1) + ' ' + player.z.toFixed(1) +
+      ' <span class="k">BRG</span> ' + brg.toFixed(0).padStart(3,'0') + '&deg; ' + cmp +
+      ' <span class="k">VEL</span> ' + player.speed.toFixed(1) + '</div>' +
+    '<div><span class="k">DISTRICT</span> <span class="d">' + districtAtWorld(player.x, player.z) + '</span>' +
+      (player.fly ? ' <span class="d">// DRONE</span>' : '') + '</div>';
+}
+
+/* --- minimap: heights + streets around the player --- */
+const MAPR = 46;   // cells shown either side
+function drawMap(){
+  const w = mapC.width, h = mapC.height;
+  const img = mapX.createImageData(w, h);
+  const px = Math.floor(player.x / CELLSZ), pz = Math.floor(player.z / CELLSZ);
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++){
+    const cx = wrapCell(px + Math.round((i / w - 0.5) * MAPR * 2));
+    const cz = wrapCell(pz + Math.round((j / h - 0.5) * MAPR * 2));
+    const k = cz * N + cx;
+    const hh = CITY.hgt[k], f = CITY.flags[k];
+    let r = 2, g = 6, b = 10;
+    if (f & FLAG.WATER){ r = 4; g = 18; b = 40; }
+    else if (f & FLAG.PARK){ r = 6; g = 34; b = 12; }
+    else if (hh > 0){ const t = Math.min(1, hh * HSTEP / 160);
+      r = 20 + t * 140; g = 60 + t * 150; b = 90 + t * 150; }
+    else if (f & FLAG.ROAD){ r = 8; g = 26; b = 34; }
+    const o = (j * w + i) * 4;
+    img.data[o] = r; img.data[o+1] = g; img.data[o+2] = b; img.data[o+3] = 235;
+  }
+  mapX.putImageData(img, 0, 0);
+  // player + view cone
+  mapX.save();
+  mapX.translate(w/2, h/2);
+  mapX.rotate(player.yaw);
+  mapX.fillStyle = 'rgba(140,255,255,.20)';
+  mapX.beginPath(); mapX.moveTo(0,0); mapX.arc(0, 0, 30, -Math.PI/2 - 0.6, -Math.PI/2 + 0.6); mapX.closePath(); mapX.fill();
+  mapX.fillStyle = '#8ff0ff';
+  mapX.beginPath(); mapX.moveTo(0,-5); mapX.lineTo(3.5,4); mapX.lineTo(-3.5,4); mapX.closePath(); mapX.fill();
+  mapX.restore();
+}
+
+/* ═════════════════════════ EXPORT / SHARE ═════════════════════════════ */
+function readFrameChars(){
+  const { cols, rows } = RT;
+  const buf = new Uint8Array(cols * rows * 4);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, RT.fbCell);
+  gl.readPixels(0, 0, cols, rows, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  const lines = [];
+  for (let y = rows - 1; y >= 0; y--){
+    let s = '';
+    for (let x = 0; x < cols; x++) s += A().glyphs[buf[(y * cols + x) * 4 + 3]] || ' ';
+    lines.push(s.replace(/\s+$/, ''));
+  }
+  return lines.join('\n');
+}
+async function copyFrame(){
+  const txt = readFrameChars();
+  try { await navigator.clipboard.writeText(txt); toast('FRAME COPIED — ' + RT.cols + 'x' + RT.rows + ' CHARS'); }
+  catch (e){
+    const blob = new Blob([txt], { type:'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'noctis7-frame.txt'; a.click();
+    toast('FRAME SAVED AS TEXT');
+  }
+}
+function savePng(){ pendingShot = true; }
+function writePng(){
+  canvas.toBlob(b => {
+    if (!b) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b); a.download = 'noctis7-' + CITY.seed.toString(16) + '.png'; a.click();
+    toast('PNG SAVED');
+  });
+}
+
+function newCity(seed){
+  CITY = makeCity(seed);
+  uploadCity(CITY);
+  player.x = (CITY.spawn[0] + 0.5) * CELLSZ;
+  player.z = (CITY.spawn[1] + 0.5) * CELLSZ;
+  player.y = 1.78; player.vx = player.vz = 0; player.fly = false;
+  player.yaw = CITY.spawnYaw;
+  player.pitch = 0.13;
+  try { history.replaceState(null, '', '#s=' + seed.toString(16)); } catch (e) {}
+  toast('CITY ' + seed.toString(16).toUpperCase());
+}
+
+/* ═════════════════════════════ RENDER ═════════════════════════════════ */
+function bindTex(unit, tex, loc){
+  gl.activeTexture(gl.TEXTURE0 + unit);
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.uniform1i(loc, unit);
+}
+const PAL_FLAT = new Float32Array(PALETTE.flat());
+
+let tPrev = performance.now(), tAcc = 0, flash = 0, nextBolt = 14 + Math.random() * 20;
+let frames = 0, msAcc = 0, dtAcc = 0, pendingShot = false;
+
+function frame(now){
+  requestAnimationFrame(frame);
+  let dt = Math.min(0.05, (now - tPrev) / 1000);
+  tPrev = now;
+  if (!S.running){ return; }
+  tAcc += dt;
+
+  // lightning
+  nextBolt -= dt;
+  if (nextBolt <= 0){ flash = 1.0; nextBolt = 16 + Math.random() * 26; thunder(); }
+  flash = Math.max(0, flash - dt * (flash > 0.55 ? 5.5 : 1.9));
+  const flashV = flash > 0.55 ? flash : flash * 0.35 * (0.5 + 0.5 * Math.sin(now * 0.05));
+
+  updatePlayer(dt);
+
+  const t0 = performance.now();
+  const { cols, rows, sw, sh, bw, bh } = RT;
+
+  /* ---- 1: scene (at cell resolution x the alphabet's sub-sampling) ---- */
+  gl.bindFramebuffer(gl.FRAMEBUFFER, RT.fbScene);
+  gl.viewport(0, 0, sw, sh);
+  gl.useProgram(P_SCENE.p);
+  bindTex(0, cityTex, P_SCENE.u.uCity);
+  gl.uniform3fv(P_SCENE.u.uPal, PAL_FLAT);
+  gl.uniform3f(P_SCENE.u.uCam, player.x, player.y, player.z);
+  gl.uniform2f(P_SCENE.u.uAng, player.yaw, player.pitch);
+  gl.uniform1f(P_SCENE.u.uAspect, canvas.width / canvas.height);
+  gl.uniform1f(P_SCENE.u.uTanFov, Math.tan(S.fov * Math.PI / 360));
+  gl.uniform1f(P_SCENE.u.uTime, tAcc);
+  gl.uniform1f(P_SCENE.u.uFlash, flashV);
+  gl.uniform1f(P_SCENE.u.uFogK, S.fogK);
+  gl.uniform1f(P_SCENE.u.uWet, S.wet);
+  gl.uniform1f(P_SCENE.u.uRainAmt, S.rain);
+  gl.uniform1i(P_SCENE.u.uSteps, S.steps);
+  gl.uniform1i(P_SCENE.u.uRefl, S.refl);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  /* ---- 2: bloom ---- */
+  gl.useProgram(P_BLOOM.p);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, RT.fbB1);
+  gl.viewport(0, 0, bw, bh);
+  bindTex(0, RT.colT, P_BLOOM.u.uSrc);
+  gl.uniform2f(P_BLOOM.u.uTexel, 1.5 / sw, 0);
+  gl.uniform1i(P_BLOOM.u.uPre, 1);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, RT.fbB2);
+  bindTex(0, RT.b1, P_BLOOM.u.uSrc);
+  gl.uniform2f(P_BLOOM.u.uTexel, 0, 1.5 / sh);
+  gl.uniform1i(P_BLOOM.u.uPre, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  /* ---- 3: glyph select ---- */
+  gl.bindFramebuffer(gl.FRAMEBUFFER, RT.fbCell);
+  gl.viewport(0, 0, cols, rows);
+  gl.useProgram(P_GLYPH.p);
+  bindTex(0, RT.colT, P_GLYPH.u.uColT);
+  bindTex(1, RT.infT, P_GLYPH.u.uInfT);
+  bindTex(2, rampTex, P_GLYPH.u.uRamp);
+  gl.uniform2f(P_GLYPH.u.uCells, sw, sh);
+  gl.uniform1f(P_GLYPH.u.uTime, tAcc);
+  gl.uniform1f(P_GLYPH.u.uEdge, S.edge);
+  gl.uniform1f(P_GLYPH.u.uGamma, S.gamma);
+  gl.uniform1f(P_GLYPH.u.uRain, S.rain);
+  gl.uniform1f(P_GLYPH.u.uSat, S.sat);
+  gl.uniform1i(P_GLYPH.u.uRainGlyph, RAIN_GLYPH);
+  gl.uniform1i(P_GLYPH.u.uMode, A().mode === 'bits' ? 1 : 0);
+  gl.uniform2i(P_GLYPH.u.uSub, RT.sx, RT.sy);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  /* ---- 4: composite ---- */
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.useProgram(P_COMP.p);
+  bindTex(0, RT.cellT, P_COMP.u.uCellT);
+  bindTex(1, atlasTex, P_COMP.u.uAtlas);
+  bindTex(2, RT.b2,    P_COMP.u.uBloom);
+  gl.uniform2f(P_COMP.u.uCellPx, S.cellW, S.cellH);
+  gl.uniform2f(P_COMP.u.uCells, cols, rows);
+  gl.uniform2f(P_COMP.u.uRes, canvas.width, canvas.height);
+  gl.uniform2f(P_COMP.u.uGrid, GRID_COLS, gridRows());
+  gl.uniform1f(P_COMP.u.uBloomAmt, S.bloom);
+  gl.uniform1f(P_COMP.u.uScan, S.scan);
+  gl.uniform1f(P_COMP.u.uVig, S.vig);
+  gl.uniform1f(P_COMP.u.uAber, S.aber);
+  gl.uniform1f(P_COMP.u.uFlash, flashV);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  /* ---- housekeeping ---- */
+  msAcc += performance.now() - t0; dtAcc += dt; frames++;
+  if (pendingShot){ pendingShot = false; writePng(); }
+  if (frames >= 30){
+    const cpu = msAcc / frames;                      // work we issued
+    const wall = (dtAcc / frames) * 1000;            // what the display actually did
+    fpsEMA = lerp(fpsEMA, 1000 / Math.max(wall, 1), 0.6);
+    if (S.autoQuality){
+      if (wall > 26 && cpu > 8 && S.quality > 0) setQuality(S.quality - 1);
+      else if (wall < 18 && cpu < 6 && S.quality < 3) setQuality(S.quality + 1);
+    }
+    frames = 0; msAcc = 0; dtAcc = 0;
+    updateHud();
+    drawMap();
+  }
+  if (toastT && now > toastT){ toastEl.classList.remove('on'); toastT = 0; }
+}
+
+/* ═══════════════════════════════ BOOT ═════════════════════════════════ */
+function start(){
+  document.getElementById('boot').classList.add('off');
+  S.running = true;
+  if (!isTouch) canvas.requestPointerLock();
+  bl.innerHTML =
+    '<b>WASD</b> walk &nbsp; <b>MOUSE</b> look &nbsp; <b>SHIFT</b> run &nbsp; <b>F</b> drone<br>' +
+    '<b>V</b> alphabet: ascii / teletext / quadrant / braille &nbsp; <b>[ ]</b> glyph size<br>' +
+    '<b>C</b> copy frame as text &nbsp; <b>G</b> png &nbsp; <b>R</b> new city<br>' +
+    '<b>M</b> sound &nbsp; <b>B</b> bloom &nbsp; <b>L</b> reflections &nbsp; <b>N</b> rain &nbsp; <b>P</b> hud &nbsp; <b>H</b> help';
+  setTimeout(() => { if (S.hud) bl.style.opacity = '0.45'; }, 9000);
+}
+document.getElementById('go').addEventListener('click', start);
+addEventListener('keydown', e => { if (!S.running && (e.code === 'Enter' || e.code === 'Space')) start(); });
+
+let seed0 = (Math.random() * 1e9) | 0;
+const mh = /[#&]s=([0-9a-f]+)/i.exec(location.hash || '');
+if (mh) seed0 = parseInt(mh[1], 16) >>> 0;
+
+ALPHABETS.forEach(a => { a.ok = alphabetSupported(a); });
+ALPHABETS[0].ok = true;                              // ASCII always works
+const RAIN_GLYPH = Math.max(0, ALPHABETS[0].glyphs.indexOf('/'));
+
+resize();
+newCity(seed0);
+addEventListener('resize', () => { clearTimeout(window.__rz); window.__rz = setTimeout(resize, 120); });
+applyHud();
+updateHud();
+drawMap();
+// the city renders live behind the boot screen, so the first thing you see is the city
+S.running = true;
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

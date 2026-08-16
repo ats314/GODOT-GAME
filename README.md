@@ -7,6 +7,7 @@ cleanly separated from the reference code it learns from and borrows from.
 ## Repository layout
 
 ```
+ascii-city/                NOCTIS-7 — walkable ASCII megacity demo (one HTML file)
 game/                      The game (to be built) — our own MIT-licensed code
 third_party/               Vendored snapshots of freely licensed Godot projects
   godot-demo-projects/     Official Godot demos (MIT) — ~120 projects: 2D, 3D,
@@ -45,8 +46,20 @@ demo's `project.godot` (e.g. `third_party/godot-demo-projects/2d/dodge_the_creep
 - Policy: MIT/Apache-2.0/CC0 only; code and assets audited separately; no
   GPL source; every import recorded. See `THIRD_PARTY_LICENSES.md`.
 
+## Demos
+
+Published to GitHub Pages from the repository root:
+
+- **`/ascii-city/`** — **NOCTIS-7**, a walkable ASCII megacity. A procedural
+  cyberpunk city raycast once per character cell and printed as text, with a
+  live switch between ASCII, teletext blocks, quadrants and braille. One
+  self-contained HTML file, no assets or dependencies. See
+  `ascii-city/README.md`.
+- **`/play/`** — the ACCRETE web build.
+
 ## Status
 
 - [x] Foundation: vendored free Godot code + license records + deep-dive survey
 - [x] Master game design: **ACCRETE** — see `docs/GAME_DESIGN.md`
+- [x] Demo: **NOCTIS-7** ASCII megacity (`ascii-city/`)
 - [ ] Game: build in `game/` (vertical slice → systems → content → ship)

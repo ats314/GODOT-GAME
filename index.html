@@ -2,15 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="refresh" content="0; url=./play/">
-  <title>ACCRETE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>GODOT-GAME — demos</title>
   <style>
-    body { background:#030614; color:#aef4ff; font-family:sans-serif;
-           display:grid; place-items:center; height:100vh; margin:0; }
-    a { color:#59c2d8; }
+    :root{ --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+    *{ box-sizing:border-box; }
+    body{ background:#03060f; color:#8ff0ff; font-family:var(--mono); margin:0; min-height:100vh;
+          display:flex; flex-direction:column; align-items:center; justify-content:center; gap:26px; padding:32px 20px; }
+    h1{ font-size:13px; letter-spacing:.42em; color:#2b6b7a; font-weight:400; margin:0; text-align:center; }
+    .grid{ display:grid; gap:16px; width:100%; max-width:720px; }
+    a.card{ display:block; text-decoration:none; color:inherit; border:1px solid rgba(90,200,230,.28);
+            padding:20px 22px; background:rgba(8,20,32,.5); transition:border-color .2s, background .2s; }
+    a.card:hover{ border-color:#8ff0ff; background:rgba(12,34,50,.6); }
+    .t{ font-size:17px; letter-spacing:.20em; color:#fff; }
+    .s{ font-size:12px; color:#59c2d8; margin-top:8px; line-height:1.7; }
+    .k{ font-size:10.5px; color:#2b6b7a; margin-top:10px; letter-spacing:.08em; }
+    footer{ font-size:10.5px; color:#1f4f5c; letter-spacing:.1em; text-align:center; }
+    footer a{ color:#2b6b7a; }
   </style>
 </head>
 <body>
-  <p>Igniting… <a href="./play/">click here if not redirected</a>.</p>
+  <h1>G O D O T - G A M E</h1>
+  <div class="grid">
+    <a class="card" href="./ascii-city/">
+      <div class="t">NOCTIS-7</div>
+      <div class="s">A walkable ASCII megacity. Procedural cyberpunk city raycast once per
+        character cell and printed in text — switchable between ASCII, teletext blocks,
+        quadrants and braille. One HTML file, no assets.</div>
+      <div class="k">WEBGL2 · WALKABLE · TOUCH + GAMEPAD</div>
+    </a>
+    <a class="card" href="./play/">
+      <div class="t">ACCRETE</div>
+      <div class="s">The Godot 4 game: a vertical slice of the shard-collecting
+        survival-defence run described in <code>docs/GAME_DESIGN.md</code>.</div>
+      <div class="k">GODOT 4 · WEB EXPORT</div>
+    </a>
+  </div>
+  <footer><a href="https://github.com/ats314/godot-game">source on github</a> · MIT</footer>
 </body>
 </html>
