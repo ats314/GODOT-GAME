@@ -104,7 +104,8 @@
   <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
     <button id="go">ENTER THE GRID</button>
     <button id="goSrc" class="ghost">WALK THIS PAGE'S SOURCE</button>
-    <button id="goLidar" class="ghost">WALK A REAL CITY</button>
+    <button id="goLidar" class="ghost">WALK MANHATTAN</button>
+    <button id="goSF" class="ghost">WALK SAN FRANCISCO</button>
   </div>
   <div id="drop">…or drop a source file or folder anywhere to walk your own code</div>
   <div id="legend">
@@ -229,6 +230,7 @@ const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
 const lerp  = (a,b,t) => a + (b - a) * t;
 
 /* ═══════════════════════════ CITY GENERATION ══════════════════════════ */
+const BUILD = 5;              // bump on every deploy; shown in the HUD
 const N = 256;                 // grid cells per side (torus)
 const CELLSZ = 4.0;            // world units per grid cell
 const HSTEP = 1.6;             // world units per height byte
@@ -1746,7 +1748,7 @@ function updateHud(){
   const brg = ((-player.yaw * 180 / Math.PI) % 360 + 360) % 360;
   const cmp = COMPASS[Math.round(brg / 22.5) % 16];
   tl.innerHTML =
-    '<div class="t">NOCTIS-7</div>' +
+    '<div class="t">NOCTIS-7 <span class="k">BUILD ' + BUILD + '</span></div>' +
     '<div><span class="d">' + CITY.title + '</span></div>' +
     '<div><span class="k">GRID</span> ' + S.cols + 'x' + S.rows +
       ' <span class="k">SET</span> <span class="d">' + A().name + '</span>' +
@@ -2028,7 +2030,8 @@ function start(){
 }
 document.getElementById('go').addEventListener('click', start);
 document.getElementById('goSrc').addEventListener('click', () => { start(); loadSelfSource(); });
-document.getElementById('goLidar').addEventListener('click', () => { start(); loadLidarCity(lidarIndex++); });
+document.getElementById('goLidar').addEventListener('click', () => { start(); lidarIndex = 1; loadLidarCity(0); });
+document.getElementById('goSF').addEventListener('click', () => { start(); lidarIndex = 0; loadLidarCity(1); });
 addEventListener('keydown', e => { if (!S.running && (e.code === 'Enter' || e.code === 'Space')) start(); });
 
 let seed0 = (Math.random() * 1e9) | 0;
