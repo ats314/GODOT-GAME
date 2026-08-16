@@ -318,12 +318,14 @@ without it ceasing to be a place.
 | **ACTIVITY** | the point-of-interest potential the prediction was built from |
 | **TERRAIN** | ground elevation, which the height field normally hides |
 
-The residual is the interesting one. Over Midtown, 24,585 cells come out shorter
-than predicted and 13,808 taller. Where it runs red, something that is not
+The residual is the interesting one. Over Midtown, 111,990 cells come out
+shorter than predicted and 59,360 taller. Where it runs red, something that is not
 economics is holding the building down — a zoning envelope, a landmark
 designation, air rights already sold, a lot nobody could assemble. See
 `docs/CITY_MODEL_FINDINGS.md` for how far that model can and cannot be trusted
-(R² = 0.333 at 8 km, **negative** transferred to 1 km).
+(Manhattan R² = 0.328 at 8 km and **negative** transferred to 2 km; San
+Francisco 0.114 and +0.047, for reasons the findings doc is careful not to
+overclaim).
 
 ### Vegetation, from the beam and not from a guess
 
