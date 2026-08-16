@@ -30,6 +30,7 @@
   #bl{ bottom:calc(env(safe-area-inset-bottom,0px) + 10px); left:calc(env(safe-area-inset-left,0px) + 12px);
        font-size:10.5px; line-height:1.6; color:var(--dim); letter-spacing:.05em; max-width:62vw;
        transition:opacity .6s ease; }
+  body.touch #bl{ bottom:auto; top:calc(env(safe-area-inset-top,0px) + 114px); max-width:54vw; }
   #bl b{ color:var(--fg); font-weight:700; }
   #map{ position:fixed; z-index:5; top:calc(env(safe-area-inset-top,0px) + 10px);
         right:calc(env(safe-area-inset-right,0px) + 12px); width:132px; height:132px;
@@ -1513,7 +1514,7 @@ addEventListener('mousemove', e => {
 const touch = { move:null, look:null, mx:0, my:0, run:false };
 const knob = document.getElementById('knob');
 const stickEl = document.getElementById('stick');
-if (isTouch) document.getElementById('touch').style.display = 'block';
+if (isTouch){ document.getElementById('touch').style.display = 'block'; document.body.classList.add('touch'); }
 
 function stickCenter(){ const r = stickEl.getBoundingClientRect(); return [r.left + r.width/2, r.top + r.height/2]; }
 addEventListener('touchstart', e => {
@@ -1838,8 +1839,14 @@ function frame(now){
   gl.uniform3fv(P_SCENE.u.uPal, PAL_FLAT);
   gl.uniform3f(P_SCENE.u.uCam, player.x, player.y, player.z);
   gl.uniform2f(P_SCENE.u.uAng, player.yaw, player.pitch);
-  gl.uniform1f(P_SCENE.u.uAspect, canvas.width / canvas.height);
-  gl.uniform1f(P_SCENE.u.uTanFov, Math.tan(S.fov * Math.PI / 360));
+  // portrait displays would otherwise get a telescopic ~37 degree horizontal
+  // view, so drive the projection off the horizontal FOV when taller than wide
+  const aspect = canvas.width / canvas.height;
+  const tanV = aspect < 1
+    ? Math.min(Math.tan(66 * Math.PI / 360) / aspect, Math.tan(100 * Math.PI / 360))
+    : Math.tan(S.fov * Math.PI / 360);
+  gl.uniform1f(P_SCENE.u.uAspect, aspect);
+  gl.uniform1f(P_SCENE.u.uTanFov, tanV);
   gl.uniform1f(P_SCENE.u.uTime, tAcc);
   gl.uniform1f(P_SCENE.u.uFlash, flashV);
   gl.uniform1f(P_SCENE.u.uFogK, S.fogK);
@@ -1923,13 +1930,16 @@ function start(){
   document.getElementById('boot').classList.add('off');
   S.running = true;
   if (!isTouch) canvas.requestPointerLock();
-  bl.innerHTML =
+  bl.innerHTML = isTouch ?
+    '<b>left stick</b> walk &nbsp; <b>drag right</b> look<br>' +
+    '<b>RUN</b> sprint &nbsp; <b>FLY</b> drone &nbsp; <b>SET</b> alphabet<br>' +
+    'tap the city to hide this' :
     '<b>WASD</b> walk &nbsp; <b>MOUSE</b> look &nbsp; <b>SHIFT</b> run &nbsp; <b>F</b> drone<br>' +
     '<b>V</b> alphabet: ascii / teletext / quadrant / braille &nbsp; <b>[ ]</b> glyph size<br>' +
     '<b>drop a file or folder</b> to walk its source &nbsp; <b>O</b> open &nbsp; <b>U</b> walk this page<br>' +
     '<b>C</b> copy frame as text &nbsp; <b>G</b> png &nbsp; <b>R</b> new city<br>' +
     '<b>M</b> sound &nbsp; <b>B</b> bloom &nbsp; <b>L</b> reflections &nbsp; <b>N</b> rain &nbsp; <b>P</b> hud &nbsp; <b>H</b> help';
-  setTimeout(() => { if (S.hud) bl.style.opacity = '0.45'; }, 9000);
+  setTimeout(() => { if (S.hud) bl.style.opacity = isTouch ? '0' : '0.45'; }, isTouch ? 7000 : 9000);
 }
 document.getElementById('go').addEventListener('click', start);
 document.getElementById('goSrc').addEventListener('click', () => { start(); loadSelfSource(); });
