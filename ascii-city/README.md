@@ -13,6 +13,8 @@ mouse          look          V      switch alphabet [ ]  glyph size
 C  copy the current frame to the clipboard as literal text
 G  save PNG   R  new city   M  sound   B  bloom   L  reflections   N  rain
 P  hide HUD   H  help
+O  open source files   U  walk this page's own source
+   …or drop a file or folder anywhere on the page
 ```
 
 Touch devices get a virtual stick, a look-drag zone, and RUN / FLY / SET
