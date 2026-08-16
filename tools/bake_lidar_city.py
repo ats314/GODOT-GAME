@@ -102,6 +102,62 @@ def collect_nodes(dataset, ept, box, max_depth):
     return out
 
 
+# Road-vs-other-ground, fitted on Midtown against Overture carriageways buffered
+# to their real class widths. See docs/SURFACE_CLASSIFICATION.md — the headline
+# is that the survey does carry this, once the labels are not centrelines:
+# AUC 0.885, AP 0.926 held out on a spatial split, against a 0.680 base rate.
+#
+# Features are z-scored against the TILE's own distribution, not Manhattan's,
+# because intensity is 8-bit in New York and 16-bit in San Francisco and nothing
+# else would transfer at all. That makes the transfer plausible, not verified;
+# San Francisco has no class 17 to speak of and is not a grid.
+ROAD_BASE = ("mean_int", "int_norm", "int_sd", "f_hi", "f_vhi", "f_brg",
+             "multi", "single", "rough", "angle", "dens", "height")
+ROAD_TERMS = (
+    ("mean_int", -2.07158), ("int_norm", -0.85173), ("int_sd", +1.88868),
+    ("f_hi", +0.56879), ("f_vhi", -0.74993), ("f_brg", -0.22129),
+    ("multi", -0.25697), ("single", +0.25697), ("rough", -0.21209),
+    ("angle", -0.11784), ("dens", +0.65757), ("height", -0.36675),
+    ("mean_int^2", +0.49602), ("int_norm^2", -0.12277), ("int_sd^2", -0.30139),
+    ("f_hi^2", +0.04056), ("f_vhi^2", -0.03471), ("f_brg^2", -0.19024),
+    ("multi^2", +0.01426), ("single^2", +0.01426), ("rough^2", +0.00072),
+    ("angle^2", -0.12100), ("dens^2", -0.08480), ("height^2", +0.33783),
+    ("mean_int*int_norm", +0.54877), ("mean_int*int_sd", +0.09679),
+    ("mean_int*f_hi", -0.56720), ("mean_int*f_vhi", +0.09351),
+    ("mean_int*f_brg", -0.37176), ("mean_int*multi", +0.00623),
+    ("mean_int*single", -0.00623), ("mean_int*rough", +0.03353),
+    ("mean_int*angle", +0.18246), ("mean_int*dens", -0.04269),
+    ("mean_int*height", +0.16021),
+)
+ROAD_BIAS = +1.55736
+
+
+def road_probability(feats, mask):
+    """Per-cell probability that a ground cell is carriageway.
+
+    Plain logistic with squares and intensity interactions rather than the
+    gradient-boosted model that scores 0.903, because 35 numbers embed in this
+    file and a forest does not. The linear model alone only reaches 0.811, so
+    the interactions are carrying the non-linearity that matters.
+    """
+    z = {}
+    for k in ROAD_BASE:
+        v = feats[k].astype(np.float64)
+        mu, sd = float(v[mask].mean()), float(v[mask].std())
+        z[k] = (v - mu) / (sd if sd > 1e-9 else 1.0)
+    logit = np.full(feats["height"].shape, ROAD_BIAS)
+    for name, w in ROAD_TERMS:
+        if name.endswith("^2"):
+            t = z[name[:-2]] ** 2
+        elif "*" in name:
+            a, b = name.split("*")
+            t = z[a] * z[b]
+        else:
+            t = z[name]
+        logit += w * t
+    return 1.0 / (1.0 + np.exp(-np.clip(logit, -30, 30)))
+
+
 def regions(mask):
     """4-connected components of a boolean grid, largest first.
 
@@ -277,6 +333,7 @@ def main():
     # material evidence: near-IR reflectance and canopy penetration
     s_int = np.zeros((GRID, GRID), dtype=np.float64)
     s_int2 = np.zeros((GRID, GRID), dtype=np.float64)
+    s_intn = np.zeros((GRID, GRID), dtype=np.float64)   # flight-line normalised
     n_multi = np.zeros((GRID, GRID), dtype=np.int64)
     # ...and the channels the first version of this tool threw away. See
     # docs/SURFACE_CLASSIFICATION.md: together these take road-vs-other-ground
@@ -299,12 +356,32 @@ def main():
     cls_hist = {}
     have_rgb = [False]
 
-    # Intensity is 8-bit in NY and 16-bit in SF, so the bright thresholds have to
-    # come from the data. One node is enough to set them.
-    probe = laspy.read(io.BytesIO(fetch(f"{BASE}/{args.dataset}/ept-data/{nodes[0][0]}.laz")))
-    pi = np.asarray(probe.intensity).astype(np.float64)
-    HI, VHI = np.percentile(pi, [90, 99])
-    print(f"intensity thresholds from a sample node: p90 {HI:.0f}, p99 {VHI:.0f}")
+    # Intensity is uncalibrated between flight lines — one node here carries 116
+    # distinct point_source_ids, each with its own gain — so the same asphalt
+    # reads differently depending on which pass caught it. Sample a spread of
+    # nodes to get a per-flight median, then scale each point onto a common one.
+    # Sampling rather than a full pre-pass: this costs ~7% of the fetch.
+    sample = [nodes[i][0] for i in range(0, len(nodes), max(1, len(nodes) // 48))]
+    si, ss = [], []
+    for key in sample:
+        try:
+            f = laspy.read(io.BytesIO(fetch(f"{BASE}/{args.dataset}/ept-data/{key}.laz")))
+        except Exception:
+            continue
+        si.append(np.asarray(f.intensity).astype(np.float64))
+        ss.append(np.asarray(f.point_source_id))
+    si, ss = np.concatenate(si), np.concatenate(ss)
+    HI, VHI = np.percentile(si, [90, 99])
+    GLOBAL_MED = float(np.median(si))
+    SRC_ID = np.unique(ss)
+    SRC_GAIN = np.ones(len(SRC_ID))
+    for i, s in enumerate(SRC_ID):
+        med = float(np.median(si[ss == s]))
+        SRC_GAIN[i] = GLOBAL_MED / med if med > 1e-6 else 1.0
+    spread = float(np.percentile(SRC_GAIN, 90) / max(np.percentile(SRC_GAIN, 10), 1e-6))
+    print(f"{len(sample)} sampled nodes, {len(si):,} points, {len(SRC_ID)} flight lines")
+    print(f"intensity thresholds p90 {HI:.0f}, p99 {VHI:.0f}; median {GLOBAL_MED:.0f}; "
+          f"flight-line gain spread p90/p10 = {spread:.2f}x")
 
     def ingest(item):
         key, _ = item
@@ -333,6 +410,10 @@ def main():
         inten = np.asarray(f.intensity)[keep].astype(np.float64)
         np.add.at(s_int.reshape(-1), flat, inten)
         np.add.at(s_int2.reshape(-1), flat, inten * inten)
+        # same asphalt, different flight, different number: scale it out
+        gi = np.searchsorted(SRC_ID, np.asarray(f.point_source_id)[keep])
+        np.add.at(s_intn.reshape(-1), flat,
+                  inten * SRC_GAIN[np.clip(gi, 0, len(SRC_ID) - 1)])
         nret = np.asarray(f.number_of_returns)[keep]
         mm = nret > 1
         if mm.any():
@@ -493,6 +574,7 @@ def main():
     rough = np.sqrt(np.maximum(s_z2 / npz - (s_z / npz) ** 2, 0.0))   # vertical spread
     single = n_first / npz                                            # single-echo share
     angle = s_ang / npz
+    int_norm = np.where(valid, s_intn / npz, 0.0)
     int_sd = np.sqrt(np.maximum(s_int2 / npz - (s_int / npz) ** 2, 0.0))
     f_hi, f_vhi = n_hi / npz, n_vhi / npz
     f_brg, f_rail = n_brg / npz, n_rail / npz
@@ -516,7 +598,7 @@ def main():
                             mean_int=mean_int, multi=multi, water=water, rough=rough,
                             single=single, angle=angle, lum=lum, gex=gex, rgb=rgb,
                             n_veg=n_veg, n_bld=n_bld, has_rgb=np.array(have_rgb),
-                            int_sd=int_sd, f_hi=f_hi, f_vhi=f_vhi,
+                            int_sd=int_sd, int_norm=int_norm, f_hi=f_hi, f_vhi=f_vhi,
                             f_brg=f_brg, f_rail=f_rail)
         print(f"dumped per-cell fields to {args.dump}")
 
@@ -527,6 +609,17 @@ def main():
 
     # street level: flat, dry, and actually surveyed
     street = valid & ~water & (height < 2.0)
+    # Everything below 2 m used to be flagged ROAD, which made Fifth Avenue, a
+    # courtyard and a plaza the same material. Ask the survey instead.
+    p_road = road_probability(
+        {"mean_int": mean_int, "int_norm": int_norm, "int_sd": int_sd,
+         "f_hi": f_hi, "f_vhi": f_vhi, "f_brg": f_brg, "multi": multi,
+         "single": single, "rough": rough, "angle": angle,
+         "dens": n_pts.astype(np.float64), "height": height}, street)
+    carriage = street & (p_road > 0.5)
+    paved = street & ~carriage
+    print(f"surface: {int(carriage.sum()):,} carriageway, {int(paved.sum()):,} other "
+          f"paved ground ({100 * carriage.sum() / max(street.sum(), 1):.0f}% road)")
 
     tex = np.zeros((GRID, GRID, 4), dtype=np.uint8)
     hb = np.clip(np.round(height / HSTEP), 0, 250).astype(np.uint8)
@@ -552,7 +645,8 @@ def main():
 
     flags = np.zeros((GRID, GRID), dtype=np.uint8)
     flags |= np.where(water, WATER, 0).astype(np.uint8)
-    flags |= np.where(street & ~water, ROAD | ROADX | ROADZ, 0).astype(np.uint8)
+    flags |= np.where(carriage, ROAD | ROADX | ROADZ, 0).astype(np.uint8)
+    flags |= np.where(paved & ~veg, PLAZA, 0).astype(np.uint8)
     flags |= np.where(veg & ~building, PARK, 0).astype(np.uint8)
     flags |= np.where(building & (height > 90), BEACON, 0).astype(np.uint8)
     flags |= np.where(~valid & ~water, PLAZA, 0).astype(np.uint8)
