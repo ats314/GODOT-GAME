@@ -3,19 +3,6 @@ extends Node2D
 ## (a pausable node that pauses the tree freezes itself — review finding);
 ## gameplay children are explicitly PAUSABLE.
 
-const UPGRADE_POOL := [
-	{id = &"beam_power", title = "Focused Beam", desc = "+35% beam damage"},
-	{id = &"beam_width", title = "Wide Aperture", desc = "+25% beam width"},
-	{id = &"magnet", title = "Deep Gravity", desc = "+30% magnet radius"},
-	{id = &"turret_add", title = "New Hardpoint", desc = "Crystallize another turret"},
-	{id = &"turret_power", title = "Charged Lattice", desc = "+30% turret damage"},
-	{id = &"turret_rate", title = "Rapid Discharge", desc = "Turrets fire 22% faster"},
-	{id = &"plating", title = "Core Plating", desc = "+1 max integrity, restore 1"},
-	{id = &"bounty", title = "Rich Veins", desc = "+1 shard from every kill"},
-	{id = &"lance", title = "Stellar Lance", desc = "Beam carries +22% damage through targets"},
-	{id = &"nova", title = "Nova Core", desc = "Kill explosions +45% damage, +15% radius"},
-]
-
 var core: Core
 var shard_field: ShardField
 var spawner: Spawner
@@ -205,7 +192,7 @@ func _on_level_up(_level: int) -> void:
 
 func _show_next_cards() -> void:
 	var options := []
-	var pool := UPGRADE_POOL.duplicate()
+	var pool := Upgrades.CATALOG.duplicate()
 	if GameState.mods.turret_count >= 8:
 		pool = pool.filter(func(u: Dictionary) -> bool: return u.id != &"turret_add")
 	pool.shuffle()
