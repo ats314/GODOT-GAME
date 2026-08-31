@@ -28,8 +28,9 @@ in CI, not just error checking.
 
 - **Performance.** `llvmpipe`/`lavapipe` are orders of magnitude slower than any real
   GPU, and this container has 4 cores. A frame time measured here means nothing. Profile
-  on real hardware — and for us that means a Steam Deck, which is the weakest machine we
-  ship to (see `PLATFORM_TARGETS.md`).
+  on real hardware. For us that is the owner's PC, which has a high-end GPU — good for
+  judging feel and visuals, misleading for judging whether the median buyer can run it.
+  See the hardware note in `PLATFORM_TARGETS.md`.
 - **Real driver behaviour.** Shader compilation quirks, driver bugs and vendor-specific
   precision differences will not reproduce on a software rasterizer.
 - **Game feel.** Input latency, controller response and whether any of it is enjoyable

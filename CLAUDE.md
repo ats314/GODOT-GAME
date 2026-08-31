@@ -10,16 +10,26 @@ are the targets. **Not a web/HTML5 game. Not mobile. Not console.** The full tar
 list and the engineering consequences are in `docs/PLATFORM_TARGETS.md` — read it
 before making any decision about renderers, threading, build size, input or storage.
 
-**No game project is scaffolded yet.** A previous concept (ACCRETE, a 2D neon
-incremental) and its HTML5 build were deleted, not archived —
-if you find a reference to `game/`, `play/`, `index.html`, `docs/GAME_DESIGN.md` or
-"ACCRETE" anywhere, it is a stale reference and should be fixed, not followed. (The
-files remain in git history if anything ever needs recovering.)
+A previous concept (ACCRETE, a 2D neon incremental) and its HTML5 build were deleted,
+not archived. A reference to `play/`, `index.html`, `docs/GAME_DESIGN.md` or "ACCRETE"
+is stale and should be fixed, not followed. `game/` now holds the KEEPALIVE demo below,
+which is unrelated to it. (The old files remain in git history.)
 
-**The chosen concept is DRAGLINE** — a physics hauling roguelite where each delivery
-bolts another jointed trailer onto your rig. See `docs/GAME_CONCEPT_DECISION.md` for the
-design, the kill criteria and the first two weeks. It was picked by a six-concept,
-three-judge panel; the losing concepts and the reasoning are recorded there too.
+**Two demos are being built and compared**, not one game. The first, **KEEPALIVE**, is
+in `game/` — you never aim, you keep a dying machine alive by triaging power between
+weapons, coolant and servos while damage breaks specific components. The second, a
+"frozen instant" reconstruction concept, has not been started.
+
+Each demo exists to answer exactly one question, and for KEEPALIVE it is "is triage under
+pressure fun?" Do not add menus, saves, progression or a second enemy to it — those are
+worthless until that question has an answer. Read `docs/DECISIONS.md` before proposing
+anything; three earlier concepts were already rejected and are recorded there.
+
+## Where things are
+
+`docs/DECISIONS.md` — what is settled and what is open. Read it before proposing anything.
+`docs/README.md` — routes every other document by the question it answers.
+`library/guides/README.md` — routes the Godot 4.7 guides by the question it answers.
 
 ## Engine version
 
@@ -53,12 +63,14 @@ the APIs models reliably get wrong (`Spatial`, `KinematicBody`, `instance()`,
 ## Repository layout
 
 ```
+game/            KEEPALIVE, demo 1 of 2 (see game/README.md)
 library/         The agent-facing resource library
   api/           Generated lookup tables over the class reference (grep these)
   code/          Generated symbol tables over everything in third_party/
   guides/        Distilled Godot 4.7 knowledge, written against the vendored docs
 third_party/     Vendored upstream code and references, licences intact
-docs/            Platform targets, the concept decision, the code survey, resources
+docs/            Decisions, platform targets, testing, code survey, resources
+                 (start at docs/README.md — it routes by question)
 tools/           Index generators and validators
 ```
 
@@ -103,8 +115,11 @@ Before reporting that a change works: boot it, lint what you touched, and if the
 is visual, render it and actually look at the screenshot.
 
 What the container **cannot** tell you: performance (software rasterization is orders of
-magnitude off — profile on a Steam Deck), driver behaviour, audio output, or game feel.
-When you could not check something, say so plainly instead of implying it was verified.
+magnitude off), driver behaviour, or audio output. Profile on the owner's PC — and see the
+hardware note in `docs/PLATFORM_TARGETS.md`, because that machine has a high-end GPU and
+will therefore hide problems that hit the median buyer. Game feel is testable: the owner
+plays with a controller on a monitor. When you could not check something, say so plainly
+instead of implying it was verified.
 
 ## Owner requirements
 
@@ -134,7 +149,10 @@ When you could not check something, say so plainly instead of implying it was ve
 - `.gd.uid` sidecar files are engine-managed. Do not hand-edit or delete them.
 - CI (`.github/workflows/godot-ci.yml`) regenerates the indexes and fails if the
   committed ones are stale. Re-run the generators and commit their output whenever you
-  vendor something. When a game project lands, add a headless import/boot job to it.
+  vendor something.
+- The demo's balance is enforced, not decorative: `tests/balance_run.gd` exits non-zero if
+  a scripted competent policy wins outside the 35-90% band. If you change a number in
+  `game/scripts/balance.gd`, re-run it.
 - Controller parity and accessibility are project requirements, not polish. Steam Deck
   is a target machine.
 

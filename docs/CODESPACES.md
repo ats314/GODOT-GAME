@@ -54,8 +54,9 @@ Be disciplined about this. A container that renders a correct frame feels like i
 telling you the game works, and it is not.
 
 - **Performance.** `llvmpipe`/`lavapipe` are orders of magnitude slower than any real GPU.
-  A frame time measured here is meaningless. Profile on hardware — for us that means a
-  Steam Deck, the weakest machine we ship to (`PLATFORM_TARGETS.md`).
+  A frame time measured here is meaningless. Profile on the owner's PC, and read the
+  hardware note in `PLATFORM_TARGETS.md` first — a high-end GPU hides the problems that
+  reach most buyers.
 - **Driver reality.** Shader compilation quirks, vendor precision differences and driver
   bugs will not reproduce on a software rasterizer.
 - **Game feel.** Input latency, controller response, and whether it is fun. No substitute
