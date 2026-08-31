@@ -5,9 +5,11 @@
 # Exported builds
 build/
 export/
+dist/
 *.pck
-# ...except the published GitHub Pages build
+# ...except the published GitHub Pages builds
 !play/*.pck
+!play/**/*.pck
 # OS / editor noise
 .DS_Store
 Thumbs.db

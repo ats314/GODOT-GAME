@@ -5,10 +5,8 @@ name: library-ci
 # library, and the thing that can rot silently is the generated indexes drifting from
 # the files they describe. This job checks exactly that.
 #
-# When a new game project lands, add a job here that runs the engine headlessly:
-#   godot --headless --path <project> --import
-#   godot --headless --path <project> <main scene> --quit-after 300
-# and fails on "SCRIPT ERROR|Parse Error|ERROR:" (ignoring vulkan/opengl/alsa noise).
+# The demos/ job below is that headless engine job, added as this comment asked: it uses
+# tools/godot_smoke_test.sh for import + boot and then runs the demo's own soak test.
 
 on:
   push:
@@ -16,12 +14,14 @@ on:
       - "library/**"
       - "third_party/**"
       - "tools/**"
+      - "demos/**"
       - ".github/workflows/godot-ci.yml"
   pull_request:
     paths:
       - "library/**"
       - "third_party/**"
       - "tools/**"
+      - "demos/**"
       - ".github/workflows/godot-ci.yml"
 
 jobs:
@@ -59,3 +59,27 @@ jobs:
           else
             echo "No library/catalog.json yet — skipping catalog validation."
           fi
+
+  # Every Godot project under demos/ must import, boot and pass its own tests. The soak
+  # test is the part that matters: a demo that boots but whose win condition has become
+  # unreachable is worse than one that crashes, because nothing tells you.
+  demos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the engine binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/godot-bin
+          key: godot-bin-4.7.1
+
+      - name: HIGHBALL — import and boot
+        run: tools/godot_smoke_test.sh demos/highball res://scenes/main.tscn
+
+      - name: HIGHBALL — soak test (all three endings reachable)
+        run: |
+          BIN=~/.cache/godot-bin/Godot_v4.7.1-stable_linux.x86_64
+          "$BIN" --headless --path demos/highball res://scenes/soak.tscn 2>&1 | tee soak.log
+          grep -q "SOAK PASS" soak.log
