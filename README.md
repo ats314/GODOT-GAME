@@ -45,6 +45,14 @@ demo's `project.godot` (e.g. `third_party/godot-demo-projects/2d/dodge_the_creep
 - Policy: MIT/Apache-2.0/CC0 only; code and assets audited separately; no
   GPL source; every import recorded. See `THIRD_PARTY_LICENSES.md`.
 
+## Where this sits
+
+`docs/MASTER.md` says how this repository fits with the other four
+(`lidargame-`, `Kalasatama`, `CityBuilder`, `react-native-game-engine`): it is
+the estate's shipping engine and the shortest route from a compiled World Seed
+to a store page. ACCRETE is a separate product that shares no pipeline stage
+with the city work, and the doc says so rather than inventing a connection.
+
 ## Status
 
 - [x] Foundation: vendored free Godot code + license records + deep-dive survey
